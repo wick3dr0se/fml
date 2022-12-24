@@ -1,183 +1,181 @@
 #!/bin/bash
 
-# terminal window cells
-term_size(){ IFS='[;' read -sp $'\e7\e[9999;9999H\e[6n\e8' -d R -rs _ LINES _ ;}; term_size
+export LC_ALL=C
 
-# save cursor: position 7 -
-# save screen: ?47h
-# hide cursor: ?25l -
-# set alternative screen buffer: ?1049h -
-# disable line wrapping: ?7l
-printf '\e7\e[?25l'
+IFS='[;' read -sp $'\e7\e[9999;9999H\e[6n\e8' -d R -rs _ LINES _
+((rows=LINES-1))
 
-# wipe terminal screen
-clear(){ printf '\e[2J' ;}
+clear(){ printf '\e[2J\e[%dH' "$rows"; }
 
-# restore cursor position: 8 -
-# show cursor: ?25h -
-# restore main screen buffer: ?1049l -
-# restore screen: ?47l
-# enable line wrapoing: ?7h
-end(){ printf '\e[?25h\e8'&& exit ;}
+printf '\e[?1049h\e[?25l'
 
-declare -A files
-((rows=LINES-1)) # limit screen size for status bar
-draw_files(){
-  unset files # reset file array
+end(){ printf '\e[?1049l\e[?25h'&& exit; }
 
-  # inital array index
-  y="$rows"
+reverse()
+{
+local -n foo="$1"
 
-  [[ $PWD == / ]] && PWD= # if root, hide /
-  for fp in "$PWD"/*; do
-   
-    f="${fp##*/}" # strip full file path
-    if [[ -h $f ]]; then
-      # symbolic link
-      # 9: seafoam  5: cyan
-      [[ $TERM =~ 256 ]]&& f="38;5;42m$f" ||
-        f="35m$f"
-    elif [[ -f $f && -x $f || $f == *'.sh' ]]; then
-      # executable
-      # 210: red-orange  1: red
-      [[ $TERM =~ 256 ]]&& f="38;5;210m$f" ||
-        f="32m$f"
-    elif [[ -d $f ]]; then
-      # directory
-      # 147: blurple  # 4: blue
-      [[ $TERM =~ 256 ]]&& f="38;5;147m$f" ||
-        f="34m$f"
-    else # regular file or anything else
-      # 248: grey  # 7;2: dim white
-      [[ $TERM =~ 256 ]]&& f="38;5;248m$f" ||
-        f="37;2m$f"
-    fi
+shopt -s extdebug
 
-    # draw the files
-    printf '\e[%dH\e[%s\e[m' "$y" "$f"
+bar()( printf '%s\n' "${BASH_ARGV[@]}" )
+foo=($(bar "${foo[@]}"))
+unset foo[-1]
 
-    # store files into an indexed (associative) array
-    files["$y"]="${f#[0-9]*m}"
+shopt -u extdebug
+}
 
-    # set highlighted color to file color
-    hover["$y"]="${f%%${files[$cursor]}}"
+draw_files(){ printf '\e[3%b\e[m\n' "${files[@]}"; }
 
-    # iterate the array per file
-    ((y--))
-    #(( y == 0 ))&& y="$rows"
-  done
-}; draw_files
+hud()
+{
+printf '\e[%dH\e[2K\e[44mfm\e[m%s\e[3%b\e[m %s' \
+  "$LINES" "${status:+ | ${status^}: }" "${mark:+$mark |}" \
+  '[←]back [→]open [q]uit'
+}
 
-hud(){ # status bar
-  # move down to start of $LINES: E
-  # clear line: 2K
-  printf '\e[%dE\e[2K\e[1;44m%s\e[m %s: %b' "$LINES" \
-    'fm' '[←]back [→]open [q]uit' "$status"
-}; hud
+term(){ [[ $TERM =~ 256 ]]&& :; }
 
-draw=1 # enable draw
-#cursor="$rows" # start cursor above status bar
+get_files()
+{
+clear
+unset files
+IFS=$'\n'
+for fp in "$PWD"/*; do
+  file="${fp##*/}"
 
-while read -rsn1; do
-  [[ $REPLY == $'\e' ]]&& read -rsn2 # trap keys
-  
-  case ${REPLY^^} in
-    Q) end;; # exit
-    U) marked= status=;; # unmark
-    D) # create directories
-      printf '\n%s' 'New directory name: '
-      read -r dir
-      [[ $dir ]]&&{
-        mkdir "$dir"
-
-        # update hud status
-        status="| \e[32mCreated\e[m: $dir"
-      }
-      clear
-    ;;
-    F) # create files
-      printf '\n%s' 'New file name: '
-      read -r file
-      [[ $file ]]&&{
-        >"$file"
-
-        # update hud status
-        status="| \e[32mCreated\e[m: $file"
-      }
-      clear
-    ;;
-    H|B|\[D) cd ../&& clear&& draw_files;;
-    J|\[B) ((cursor++));; # move down
-    K|\[A) ((cursor--));; # move up
-    X|\[3) # delete
-      printf '\n%s' "Do you want to delete $marked? [y/n]: "
-      read -rsn1 del
-      [[ ${del,,} == 'y' ]]&&{
-        # store pre-deleted path
-        deleted="${PWD##*/}"
-        rm -fr "$path/$marked"
-        
-        # update hud status
-        status="| \e[31mDeleted\e[m: $marked"
-
-        # move back if directory is gone
-        [[ $marked == $deleted ]]&& cd ../ 
-      }
-      clear                                                ;;
-    L|''|\[C) # marked files
-      marked="${files[$cursor]}" path="$PWD"
-      [[ $marked ]]&& status="| \e[33mMarked\e[m: $marked"
-
-      if [[ -d ${files[$cursor]} ]]; then
-        cd "${files[$cursor]}"
-        # redraw the new files 
-        clear&& draw_files
-      
-      elif [[ -e ${files[$cursor]} ]]; then
-        draw=0 # disable draw
-        # print file to main buffer
-        #printf '\e[?1049l\e[2J\r'
-
-        cat "${files[$cursor]}"
-        
-        hud
-       
-        # trap a new set of commands for regular files
-        while read -rsn1; do
-          [[ $REPLY == $'\e' ]]&& read -rsn2
-  
-          case ${REPLY^^} in
-            Q) clear&& end;;
-            L|E|\[C) "${EDITOR:-vim}" "${files[$cursor]}";;
-            B|\[D) draw=1&& break;; 
-          esac
-
-        done
-
-      fi
-    ;;
-  esac
-
-  # scrollback
-  ((cursorMin=rows-${#files[@]}))
-  if (( cursor >= LINES )); then
-    ((cursor=cursorMin+1))
-  elif (( cursor <= cursorMin )); then
-   cursor="$rows"
+  if [[ -h $fp ]]; then
+    file+='\e[m@'
+    term&& color='8;5;42'|| color='6;1'
+  elif [[ -f $fp&& -x $fp|| $fp == *'.sh' ]]; then
+    file+='\e[m*'
+    term&& color='8;5;210'|| color='2;1'
+  elif [[ -d $fp ]]; then
+    file+='\e[m/'
+    term&& color='8;5;147'|| color='4;1'
+  else
+    term&& color='8;5;248'|| color='7;2'
   fi
 
-  (( draw ))&&{
-    draw_files
-
-    printf '\e[%dH\e[%s%s\e[m' \
-      "$cursor" "${hover[$cursor]/#3/4}" \
-      "${files[$cursor]}"
-    
-    hud
-  }
+  files+=("${color}m$file")
 done
 
-# trap interrupt and abort signals
-trap '' 2 9
-# trap window resize
-trap 'term_size; clear; draw_files; hud' 28
+reverse files
+filesOG=("${files[@]}") fileCount="${#files[@]}"
+
+draw_files
+hud
+}
+
+cursor="$LINES"
+hover()
+{
+printf '\e[%dH\e[4%b\e[m' "$cursor" "${files[$cursor-$LINES]}"
+
+hist+=("$cursor")
+printf '\e[%dH\e[3%b\e[m' "$hist" "${files[$hist-$LINES]}"
+(( i ))&& hist=("${hist[@]:1}")|| i=1
+}
+
+scroll()
+{
+(( fileCount > rows ))&&{
+  if (( cursor < 1 )); then
+    cursor="$rows" files=("${files[@]:0:${#files[@]}-$rows}")
+    draw_files
+  elif (( cursor > rows )); then
+    cursor=1 files=("${filesOG[@]:0:${#files[@]}+$rows}")
+    draw_files
+  fi
+  hud
+}||{
+  ((cursorMin=rows-${#files[@]}))
+  if (( cursor > rows )); then
+    cursor="$cursorMin"
+  elif (( cursor < cursorMin )); then
+    cursor="$rows"
+  fi
+}
+}
+
+read_keys()
+{
+read -rsn1 key
+[[ $key == $'\e' ]]&& read -rsn2 key
+key="${key^^}"
+}
+
+change_dir(){ cd "${1:-$marked}"|| return&& get_files ;}
+
+mapkeys()
+{
+read_keys
+case $key in
+  Q) end;;
+  D) printf '\e[H\e[2K%s' 'New directory name: '
+    
+    read -r dir
+    if [[ $dir && ! -d $dir ]]; then
+      mkdir "$dir"&&{
+        mark="4m$dir\e[m/" status='created'
+        get_files
+      }
+    elif [[ $dir && -d $dir ]]; then
+      mark="4m$dir\e[m/ exist" status='error'
+    fi
+  ;;
+  F) printf '\e[H\e[2K%s' 'New file name: '
+    
+    read -r file
+    if [[ $file && ! -f $file ]]; then
+      >"$file"&&{
+        mark="9m$file" status='created'
+        get_files
+      }
+    elif [[ $file && -f $file ]]; then
+      mark="9m$file exist" status='error'
+    fi
+  ;;
+  H|\[D) change_dir ../;;
+  J|\[B) ((cursor++));;
+  K|\[A) ((cursor--));;
+  L|''|\[C) mark="${files[$cursor-$LINES]}" status='marked'
+    marked="${mark#[0-9]*m}" marked="${marked%\\e[m?}" path="$PWD"
+    
+    change_dir||{
+      printf '\e[?1049l'
+      clear&& cat "$marked"
+      hud
+      
+      for((;;)){
+        read_keys
+        case $key in
+          Q) end;;
+          H|\[D) get_files&& break;;
+          L|\[C) "${EDITOR:-${VISUAL:-vi}}" "$marked"
+            printf '\e[?25l'
+        esac
+      }
+
+    }
+  ;;
+  X|\[3) printf '\e[H\e[2K%b' "Do you want to delete \e[3$mark\e[m? [y/n]: "
+    
+    read -rsn1 del
+    [[ ${del,,} == 'y' ]]&&{
+      rm -fr "$path/$marked"
+      status='deleted'
+      
+      [[ $marked == ${PWD##*/} ]]&& change_dir ../|| get_files
+    } 
+  ;;
+esac
+}
+
+get_files
+for((;;)){
+  mapkeys
+
+  scroll
+
+  hover 2>/dev/null
+}
