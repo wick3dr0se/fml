@@ -143,8 +143,7 @@ case $key in
     
     change_dir||{
       printf '\e[?1049l'
-      clear&& cat "$marked"
-      hud
+      clear&& cat "$marked"; hud
       
       for((;;)){
         read_keys
@@ -155,18 +154,19 @@ case $key in
             printf '\e[?25l'
         esac
       }
-
     }
+
+    printf '\e[?1049h\e[?25l'
+    clear&& draw_files; hud
   ;;
   X|\[3) printf '\e[H\e[2K%b' "Do you want to delete \e[3$mark\e[m? [y/n]: "
     
     read -rsn1 del
     [[ ${del,,} == 'y' ]]&&{
-      rm -fr "$path/$marked"
-      status='deleted'
+      rm -fr "$path/$marked"&& status='deleted'
       
       [[ $marked == ${PWD##*/} ]]&& change_dir ../|| get_files
-    } 
+    }|| printf '\e[2K' 
   ;;
 esac
 }
