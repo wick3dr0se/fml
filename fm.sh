@@ -7,9 +7,9 @@ IFS='[;' read -sp $'\e7\e[9999;9999H\e[6n\e8' -d R -rs _ LINES _
 
 clear(){ printf '\e[2J\e[%dH' "$rows"; }
 
-printf '\e[?1049h\e[?25l'
+printf '\e[?1049h\e[?7l\e[?25l'
 
-end(){ printf '\e[?1049l\e[?25h'&& exit; }
+end(){ printf '\e[?1049l\e[?7h\e[?25h'&& exit; }
 
 reverse()
 {
