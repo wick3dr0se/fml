@@ -11,6 +11,8 @@ Written in BASH v5+, fm is coded with heavy bashisms not intended for portabilit
 <img src="https://discordapp.com/api/guilds/913584348937207839/widget.png?style=shield"/></a>
 </div>
 
+![fm](fm.gif)
+
 ## Install
 download the repository
 
