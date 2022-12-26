@@ -25,4 +25,18 @@ execute the script
 
 ```bash
 bash fm.sh
+  # or
+./fm.sh
 ```
+
+## Interface Controls
+Q   ...   Quit  
+D   ...   Create directory  
+F   ...   Create file  
+X   ...   Delete marked file/directory
+
+### Movements
+←, H   ...   Back a directory  
+↓, J   ...   Move down  
+↑, K   ...   Move up  
+→, L   ...   Enter file/directory

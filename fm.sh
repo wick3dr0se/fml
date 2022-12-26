@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 export LC_ALL=C
 
@@ -66,7 +66,6 @@ draw_files
 hud
 }
 
-cursor="$LINES"
 hover()
 {
 printf '\e[%dH\e[4%b\e[m' "$cursor" "${files[$cursor-$LINES]}"
@@ -89,9 +88,9 @@ scroll()
   hud
 }||{
   ((cursorMin=rows-${#files[@]}))
-  if (( cursor > rows )); then
+  if (( cursor >= LINES )); then
     cursor="$cursorMin"
-  elif (( cursor < cursorMin )); then
+  elif (( cursor <= cursorMin )); then
     cursor="$rows"
   fi
 }
@@ -143,13 +142,14 @@ case $key in
     
     change_dir||{
       printf '\e[?1049l'
-      clear&& cat "$marked"; hud
+      clear&& cat "$marked"
+      status='viewing'; hud
       
       for((;;)){
         read_keys
         case $key in
           Q) end;;
-          H|\[D) get_files&& break;;
+          H|\[D) status='marked'&& get_files&& break;;
           L|\[C) "${EDITOR:-${VISUAL:-vi}}" "$marked"
             printf '\e[?25l'
         esac
