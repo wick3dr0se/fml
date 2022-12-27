@@ -2,7 +2,7 @@
 
 export LC_ALL=C
 
-IFS='[;' read -sp $'\e7\e[9999;9999H\e[6n\e8' -d R -rs _ LINES _
+IFS='[;' read -sp $'\e[9999;9999H\e[6n' -d R -rs _ LINES _
 ((rows=LINES-1))
 
 clear(){ printf '\e[2J\e[%dH' "$rows"; }
@@ -24,13 +24,13 @@ unset foo[-1]
 shopt -u extdebug
 }
 
-draw_files(){ printf '\e[3%b\e[m\n' "${files[@]}"; }
+draw_files(){ printf '\e[3%b\e[m\n' "${files[@]}" ;}
 
 hud()
 {
 printf '\e[%dH\e[2K\e[44mfm\e[m%s\e[3%b\e[m %s' \
-  "$LINES" "${status:+ | ${status^}: }" "${mark:+$mark |}" \
-  '[←]back [→]open [q]uit'
+  "$LINES" "${status:+ | ${status^}: }" \
+  "${mark:+$mark |}" '[←]back [→]open [q]uit'
 }
 
 term(){ [[ $TERM =~ 256 ]]&& :; }
@@ -70,8 +70,9 @@ hover()
 {
 printf '\e[%dH\e[4%b\e[m' "$cursor" "${files[$cursor-$LINES]}"
 
-hist+=("$cursor")
-printf '\e[%dH\e[3%b\e[m' "$hist" "${files[$hist-$LINES]}"
+hist+=("$cursor"); (( cursor == hist ))||
+  printf '\e[%dH\e[3%b\e[m' "$hist" "${files[$hist-$LINES]}"
+
 (( i ))&& hist=("${hist[@]:1}")|| i=1
 }
 
@@ -79,18 +80,18 @@ scroll()
 {
 (( fileCount > rows ))&&{
   if (( cursor < 1 )); then
-    cursor="$rows" files=("${files[@]:0:${#files[@]}-$rows}")
-    draw_files
+    files=("${files[@]:0:${#files[@]}-$rows}")
+    cursor="$rows"&& draw_files
   elif (( cursor > rows )); then
-    cursor=1 files=("${filesOG[@]:0:${#files[@]}+$rows}")
-    draw_files
+    files=("${filesOG[@]:0:${#files[@]}+$rows}")
+    cursor=1&& draw_files
   fi
   hud
 }||{
-  ((cursorMin=rows-${#files[@]}))
-  if (( cursor >= LINES )); then
+  ((cursorMin=LINES-${#files[@]}))
+  if (( cursor > rows )); then
     cursor="$cursorMin"
-  elif (( cursor <= cursorMin )); then
+  elif (( cursor < cursorMin )); then
     cursor="$rows"
   fi
 }
@@ -103,7 +104,13 @@ read -rsn1 key
 key="${key^^}"
 }
 
-change_dir(){ cd "${1:-$marked}"|| return&& get_files ;}
+change_dir()
+{
+cd "${1:-$marked}"&&{
+  get_files
+  cursor="$rows"
+}|| return
+}
 
 mapkeys()
 {
@@ -112,33 +119,32 @@ case $key in
   Q) end;;
   D) printf '\e[H\e[2K%s' 'New directory name: '
     
-    read -r dir
-    if [[ $dir && ! -d $dir ]]; then
-      mkdir "$dir"&&{
-        mark="4m$dir\e[m/" status='created'
-        get_files
-      }
-    elif [[ $dir && -d $dir ]]; then
-      mark="4m$dir\e[m/ exist" status='error'
-    fi
+    read -r
+    mkdir "$REPLY"&&{
+      status='created' mark="4m$REPLY\e[m/"
+      get_files
+    }||{
+      status='error' mark="4m$REPLY\e[m/ exist"
+      hud
+    }
   ;;
   F) printf '\e[H\e[2K%s' 'New file name: '
     
-    read -r file
-    if [[ $file && ! -f $file ]]; then
-      >"$file"&&{
-        mark="9m$file" status='created'
-        get_files
-      }
-    elif [[ $file && -f $file ]]; then
-      mark="9m$file exist" status='error'
-    fi
+    read -r
+    >"$REPLY"&&{
+      mark="9m$REPLY" status='created'
+      get_files
+    }||{
+      status='error' mark="9m$REPLY exist"
+      hud
+    }
   ;;
   H|\[D) change_dir ../;;
   J|\[B) ((cursor++));;
   K|\[A) ((cursor--));;
-  L|''|\[C) mark="${files[$cursor-$LINES]}" status='marked'
-    marked="${mark#[0-9]*m}" marked="${marked%\\e[m?}" path="$PWD"
+  L|''|\[C) status='marked' path="$PWD"
+    mark="${files[$cursor-$LINES]}"
+    marked="${mark#[0-9]*m}" marked="${marked%\\e[m?}"
     
     change_dir||{
       printf '\e[?1049l'
@@ -150,8 +156,7 @@ case $key in
         case $key in
           Q) end;;
           H|\[D) status='marked'&& get_files&& break;;
-          L|\[C) "${EDITOR:-${VISUAL:-vi}}" "$marked"
-            printf '\e[?25l'
+          L|\[C) "${EDITOR:-${VISUAL:-vi}}" "$marked";;
         esac
       }
     }
@@ -159,23 +164,27 @@ case $key in
     printf '\e[?1049h\e[?25l'
     clear&& draw_files; hud
   ;;
-  X|\[3) printf '\e[H\e[2K%b' "Do you want to delete \e[3$mark\e[m? [y/n]: "
-    
-    read -rsn1 del
-    [[ ${del,,} == 'y' ]]&&{
+  X|\[3) [[ $marked ]]&&{
+    printf '\e[H\e[2K%b' \
+      "Do you want to delete \e[3$mark\e[m? [y/n]: "
+
+    read -rsn1
+    [[ ${REPLY,,} == 'y' ]]&&{
       rm -fr "$path/$marked"&& status='deleted'
       
-      [[ $marked == ${PWD##*/} ]]&& change_dir ../|| get_files
-    }|| printf '\e[2K' 
+      [[ $marked == ${PWD##*/} ]]&&
+        change_dir ../|| get_files
+    }|| printf '\e[2K'
+  }
   ;;
 esac
 }
 
 get_files
 for((;;)){
+  hover 2>/dev/null
+
   mapkeys
 
   scroll
-
-  hover 2>/dev/null
 }
