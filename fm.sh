@@ -5,7 +5,7 @@ export LC_ALL=C
 IFS='[;' read -sp $'\e[9999;9999H\e[6n' -d R -rs _ LINES _
 ((rows=LINES-1))
 
-clear(){ printf '\e[2J\e[%dH' "$rows"; }
+clear_rows(){ printf '\e[2J\e[%dH' "$rows"; }
 
 printf '\e[?1049h\e[?7l\e[?25l'
 
@@ -37,7 +37,7 @@ term(){ [[ $TERM =~ 256 ]]&& :; }
 
 get_files()
 {
-clear
+clear_rows
 unset files
 IFS=$'\n'
 for fp in "$PWD"/*; do
@@ -148,7 +148,7 @@ case $key in
 
     change_dir||{
       printf '\e[?1049l'
-      clear&& cat "$marked"
+      clear_rows&& cat "$marked"
       status='viewing'; hud
 
       for((;;)){
@@ -162,7 +162,7 @@ case $key in
     }
 
     printf '\e[?1049h\e[?25l'
-    clear&& draw_files; hud
+    clear_rows&& draw_files; hud
   ;;
   X|\[3) [[ $marked ]]&&{
     printf '\e[H\e[2K%b' \
