@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-export LC_ALL=C
+LC_ALL=C
+LANG=C
 
 IFS='[;' read -sp $'\e[9999;9999H\e[6n' -d R -rs _ LINES _
 ((rows=LINES-1))
@@ -11,8 +12,7 @@ printf '\e[?1049h\e[?7l\e[?25l'
 
 end(){ printf '\e[?1049l\e[?7h\e[?25h'&& exit; }
 
-reverse()
-{
+reverse(){
 local -n foo="$1"
 
 shopt -s extdebug
@@ -26,8 +26,7 @@ shopt -u extdebug
 
 draw_files(){ printf '\e[3%b\e[m\n' "${files[@]}" ;}
 
-hud()
-{
+hud(){
 printf '\e[%dH\e[2K\e[44mfm\e[m%s\e[3%b\e[m %s' \
   "$LINES" "${status:+ | ${status^}: }" \
   "${mark:+$mark |}" '[←]back [→]open [q]uit'
@@ -35,8 +34,7 @@ printf '\e[%dH\e[2K\e[44mfm\e[m%s\e[3%b\e[m %s' \
 
 term(){ [[ $TERM =~ 256 ]]&& :; }
 
-get_files()
-{
+get_files(){
 clear_rows
 unset files
 IFS=$'\n'
@@ -66,8 +64,7 @@ draw_files
 hud
 }
 
-hover()
-{
+hover(){
 printf '\e[%dH\e[4%b\e[m' "$cursor" "${files[$cursor-$LINES]}"
 
 hist+=("$cursor"); (( cursor == hist ))||
@@ -76,44 +73,40 @@ hist+=("$cursor"); (( cursor == hist ))||
 (( i ))&& hist=("${hist[@]:1}")|| i=1
 }
 
-scroll()
-{
-(( fileCount > rows ))&&{
-  if (( cursor < 1 )); then
-    files=("${files[@]:0:${#files[@]}-$rows}")
-    cursor="$rows"&& draw_files
-  elif (( cursor > rows )); then
-    files=("${filesOG[@]:0:${#files[@]}+$rows}")
-    cursor=1&& draw_files
-  fi
-  hud
-}||{
-  ((cursorMin=LINES-${#files[@]}))
-  if (( cursor > rows )); then
-    cursor="$cursorMin"
-  elif (( cursor < cursorMin )); then
-    cursor="$rows"
-  fi
-}
+scroll(){
+    if (( fileCount > rows )); then
+        if (( cursor < 1 )); then
+            files=("${files[@]:0:${#files[@]}-$rows}")
+            cursor="$rows"&& draw_files
+        elif (( cursor > rows )); then
+            files=("${filesOG[@]:0:${#files[@]}+$rows}")
+            cursor=1&& draw_files
+        fi
+        hud
+    else
+        ((cursorMin=LINES-${#files[@]}))
+        if (( cursor > rows )); then
+            cursor="$cursorMin"
+        elif (( cursor < cursorMin )); then
+            cursor="$rows"
+        fi
+    fi
 }
 
-read_keys()
-{
+read_keys(){
 read -rsn1 key
 [[ $key == $'\e' ]]&& read -rsn2 key
 key="${key^^}"
 }
 
-change_dir()
-{
+change_dir(){
 cd "${1:-$marked}"&&{
   get_files
   cursor="$rows"
 }|| return
 }
 
-mapkeys()
-{
+mapkeys(){
 read_keys
 case $key in
   Q) end;;
@@ -156,7 +149,7 @@ case $key in
         case $key in
           Q) end;;
           H|\[D) status='marked'&& get_files&& break;;
-          L|\[C) "${EDITOR:-${VISUAL:-vi}}" "$marked";;
+          L|\[C) "${VISUAL:-${EDITOR:-vi}}" "$marked";;
         esac
       }
     }
