@@ -19,7 +19,7 @@ shopt -s extdebug
 
 bar()( printf '%s\n' "${BASH_ARGV[@]}" )
 foo=($(bar "${foo[@]}"))
-unset foo[-1]
+unset "foo[-1]"
 
 shopt -u extdebug
 }
@@ -118,7 +118,7 @@ read_keys
 case $key in
   Q) end;;
   D) printf '\e[H\e[2K%s' 'New directory name: '
-    
+
     read -r
     mkdir "$REPLY"&&{
       status='created' mark="4m$REPLY\e[m/"
@@ -129,7 +129,7 @@ case $key in
     }
   ;;
   F) printf '\e[H\e[2K%s' 'New file name: '
-    
+
     read -r
     >"$REPLY"&&{
       mark="9m$REPLY" status='created'
@@ -145,12 +145,12 @@ case $key in
   L|''|\[C) status='marked' path="$PWD"
     mark="${files[$cursor-$LINES]}"
     marked="${mark#[0-9]*m}" marked="${marked%\\e[m?}"
-    
+
     change_dir||{
       printf '\e[?1049l'
       clear&& cat "$marked"
       status='viewing'; hud
-      
+
       for((;;)){
         read_keys
         case $key in
@@ -171,8 +171,8 @@ case $key in
     read -rsn1
     [[ ${REPLY,,} == 'y' ]]&&{
       rm -fr "$path/$marked"&& status='deleted'
-      
-      [[ $marked == ${PWD##*/} ]]&&
+
+      [[ $marked == "${PWD##*/}" ]]&&
         change_dir ../|| get_files
     }|| printf '\e[2K'
   }
