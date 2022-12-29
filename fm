@@ -37,10 +37,10 @@ change_dir()
 {
 clear_screen
 if [[ $marked == '*' ]]; then
-  cd -
-  unset status mark
+  cd -|| return
+  unset status mark marked
 else
-  cd "${1:-$marked}"|| return
+  cd "${1:-$marked}" 2>/dev/null|| return
 fi
 get_files&& cursor="$rows"
 }
@@ -92,8 +92,6 @@ case $key in
   L|''|\[C) status='marked' path="$PWD"
     mark="${files[$cursor-$LINES]}"
     marked="${mark#[0-9]*m}" marked="${marked%\\e[m?}"
-
-    #
     
     change_dir||{
       printf '\e[?1049l'
@@ -108,9 +106,7 @@ case $key in
           L|\[C) "${VISUAL:-${EDITOR:-vi}}" "$marked";;
         esac
       }
-
-      printf '\e[?1049h\e[?25l'
-      clear_screen&& draw_files; hud
+      init_term&& draw_files; hud
     }
   ;;
 esac
@@ -160,7 +156,7 @@ draw_files
 draw_files()
 {
 clear_screen
-printf '\e[3%b\n' "${files[@]}"
+printf '\e[3%b\e[m\n' "${files[@]}"
 hud
 }
 
