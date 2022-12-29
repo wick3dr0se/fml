@@ -15,7 +15,7 @@ Written in BASH v5+, fm is coded with heavy bashisms not intended for portabilit
 
 fm works on:
 
-&check&; Linux
+&check; Linux
 
 ## Install
 Clone this repo.
