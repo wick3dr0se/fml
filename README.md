@@ -17,6 +17,8 @@ fm works on:
 
 &check; Linux
 
+&check; Android, using termux
+
 ## Install
 Clone this repo.
 
