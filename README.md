@@ -13,6 +13,10 @@ Written in BASH v5+, fm is coded with heavy bashisms not intended for portabilit
 <img width="400" src="https://github.com/wick3dr0se/fm/blob/main/fm.gif?raw=true">
 </div>
 
+fm works on:
+
+&check&; Linux
+
 ## Install
 Clone this repo.
 
