@@ -4,29 +4,31 @@
 
 Written in BASH v5+, fm is coded with heavy bashisms not intended for portability. Fm is wrote in very clean, minimal BASH and requires no external dependencies</p>
 
-<img src="https://img.shields.io/badge/Made%20with-Bash-1f425f.svg"></img>
+<img src="https://shields.io/badge/made-with%20%20bash-green?style=flat-square&color=d5c4a1&labelColor=1d2021&logo=gnu-bash">
 <img src=https://img.shields.io/badge/Maintained%3F-yes-green.svg></img>  
-<img src="https://img.shields.io/badge/Shell_Script-121011?logo=gnu-bash&logoColor=white"></img>
 <a href="https://discord.gg/W4mQqNnfSq">
 <img src="https://discordapp.com/api/guilds/913584348937207839/widget.png?style=shield"/></a>
+<br>
+<br>
+<img width="400" src="https://github.com/wick3dr0se/fm/blob/main/fm.gif?raw=true">
 </div>
 
-![fm](fm.gif)
-
 ## Install
-download the repository
+Clone this repo.
 
 ```bash
-git clone https://github.com/wick3dr0se/fm&& cd fm
+git clone https://github.com/wick3dr0se/fm;cd fm
 ```
 
 ## Usage
-execute the script
+```bash
+$ fm
+```
+
+if you haven't installed fm, you can execute it as a script.
 
 ```bash
-bash fm.sh
-  # or
-./fm.sh
+$ bash fm.sh
 ```
 
 ## Interface Controls
