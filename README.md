@@ -29,10 +29,10 @@ $ git clone https://github.com/wick3dr0se/fm;cd fm
 $ fm
 ```
 
-if you haven't installed fm, you can execute it as a script.
+if you haven't installed fm, you can execute it in the cloned dir.
 
 ```bash
-$ bash fm.sh
+$ bash fm
 ```
 
 ## Interface Controls
