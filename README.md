@@ -21,7 +21,7 @@ fm works on:
 Clone this repo.
 
 ```bash
-git clone https://github.com/wick3dr0se/fm;cd fm
+$ git clone https://github.com/wick3dr0se/fm;cd fm
 ```
 
 ## Usage
