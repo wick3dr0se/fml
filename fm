@@ -1,112 +1,52 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# shellcheck disable=SC2015,SC2172,SC2128,SC2207
+# SC2207 -- Prefer mapfile or read -a to spli... breaks reverse
+# SC2128 -- Expanding an array without an ind... oh convenient
+# SC2172 -- Trapping signals by number is not... trap -l is ez
+# SC2015 -- Note that A && B || C is not if-t... duh
 
 LC_ALL=C
 LANG=C
 
-IFS='[;' read -sp $'\e[9999;9999H\e[6n' -d R -rs _ LINES _
+set -o ignoreeof
+
+trap end 2
+trap 'init_term; draw_files' 28
+
+init_term()
+{
+shopt -s checkwinsize; (:;:)
 ((rows=LINES-1))
 
-clear_rows(){ printf '\e[2J\e[%dH' "$rows"; }
-
-printf '\e[?1049h\e[?7l\e[?25l'
+printf '\e[?1049h\e[2J\e[1;%dr\e[%dH\e[?7l\e[?25l' \
+  "$LINES" "$rows"
+}; init_term
 
 end(){ printf '\e[?1049l\e[?7h\e[?25h'&& exit; }
 
-reverse(){
-local -n foo="$1"
+clear_screen(){ printf '\e[2J\e[%dH' "$rows"; }
 
-shopt -s extdebug
-
-bar()( printf '%s\n' "${BASH_ARGV[@]}" )
-foo=($(bar "${foo[@]}"))
-unset "foo[-1]"
-
-shopt -u extdebug
-}
-
-draw_files(){ printf '\e[3%b\e[m\n' "${files[@]}" ;}
-
-hud(){
-printf '\e[%dH\e[2K\e[44mfm\e[m%s\e[3%b\e[m %s' \
-  "$LINES" "${status:+ | ${status^}: }" \
-  "${mark:+$mark |}" '[←]back [→]open [q]uit'
-}
-
-term(){ [[ $TERM =~ 256 ]]&& :; }
-
-get_files(){
-clear_rows
-unset files
-IFS=$'\n'
-for fp in "$PWD"/*; do
-  file="${fp##*/}"
-
-  if [[ -h $fp ]]; then
-    file+='\e[m@'
-    term&& color='8;5;42'|| color='6;1'
-  elif [[ -f $fp&& -x $fp|| $fp == *'.sh' ]]; then
-    file+='\e[m*'
-    term&& color='8;5;210'|| color='2;1'
-  elif [[ -d $fp ]]; then
-    file+='\e[m/'
-    term&& color='8;5;147'|| color='4;1'
-  else
-    term&& color='8;5;248'|| color='7;2'
-  fi
-
-  files+=("${color}m$file")
-done
-
-reverse files
-filesOG=("${files[@]}") fileCount="${#files[@]}"
-
-draw_files
-hud
-}
-
-hover(){
-printf '\e[%dH\e[4%b\e[m' "$cursor" "${files[$cursor-$LINES]}"
-
-hist+=("$cursor"); (( cursor == hist ))||
-  printf '\e[%dH\e[3%b\e[m' "$hist" "${files[$hist-$LINES]}"
-
-(( i ))&& hist=("${hist[@]:1}")|| i=1
-}
-
-scroll(){
-    if (( fileCount > rows )); then
-        if (( cursor < 1 )); then
-            files=("${files[@]:0:${#files[@]}-$rows}")
-            cursor="$rows"&& draw_files
-        elif (( cursor > rows )); then
-            files=("${filesOG[@]:0:${#files[@]}+$rows}")
-            cursor=1&& draw_files
-        fi
-        hud
-    else
-        ((cursorMin=LINES-${#files[@]}))
-        if (( cursor > rows )); then
-            cursor="$cursorMin"
-        elif (( cursor < cursorMin )); then
-            cursor="$rows"
-        fi
-    fi
-}
-
-read_keys(){
+read_keys()
+{
 read -rsn1 key
 [[ $key == $'\e' ]]&& read -rsn2 key
 key="${key^^}"
 }
 
-change_dir(){
-cd "${1:-$marked}"&&{
-  get_files
-  cursor="$rows"
-}|| return
+change_dir()
+{
+clear_screen
+if [[ $marked == '*' ]]; then
+  cd -
+  unset status mark
+else
+  cd "${1:-$marked}"|| return
+fi
+get_files&& cursor="$rows"
 }
 
-mapkeys(){
+keymap()
+{
 read_keys
 case $key in
   Q) end;;
@@ -124,13 +64,27 @@ case $key in
   F) printf '\e[H\e[2K%s' 'New file name: '
 
     read -r
-    >"$REPLY"&&{
+    :>"$REPLY"&&{
       mark="9m$REPLY" status='created'
       get_files
     }||{
       status='error' mark="9m$REPLY exist"
       hud
     }
+  ;;
+  X|\[3) [[ $marked ]]&&{
+    printf '\e[H\e[2K%b' \
+      "Do you want to delete \e[3$mark\e[m? [y/n]: "
+
+    read -rsn1
+    [[ ${REPLY,,} == 'y' ]]&&{
+      del="$path/$marked"
+      rm -fr "${del:?Not found}"&& status='deleted'
+
+      [[ $marked == "${PWD##*/}" ]]&&
+        change_dir ../|| get_files
+    }|| printf '\e[2K'
+  }
   ;;
   H|\[D) change_dir ../;;
   J|\[B) ((cursor++));;
@@ -139,10 +93,12 @@ case $key in
     mark="${files[$cursor-$LINES]}"
     marked="${mark#[0-9]*m}" marked="${marked%\\e[m?}"
 
+    #
+    
     change_dir||{
       printf '\e[?1049l'
-      clear_rows&& cat "$marked"
-      status='viewing'; hud
+      clear_screen&& cat "$marked"
+      status='viewing'&& hud
 
       for((;;)){
         read_keys
@@ -152,32 +108,99 @@ case $key in
           L|\[C) "${VISUAL:-${EDITOR:-vi}}" "$marked";;
         esac
       }
+
+      printf '\e[?1049h\e[?25l'
+      clear_screen&& draw_files; hud
     }
-
-    printf '\e[?1049h\e[?25l'
-    clear_rows&& draw_files; hud
-  ;;
-  X|\[3) [[ $marked ]]&&{
-    printf '\e[H\e[2K%b' \
-      "Do you want to delete \e[3$mark\e[m? [y/n]: "
-
-    read -rsn1
-    [[ ${REPLY,,} == 'y' ]]&&{
-      rm -fr "$path/$marked"&& status='deleted'
-
-      [[ $marked == "${PWD##*/}" ]]&&
-        change_dir ../|| get_files
-    }|| printf '\e[2K'
-  }
   ;;
 esac
 }
 
+reverse(){
+local -n foo="$1"
+
+shopt -s extdebug
+
+bar()( printf '%s\n' "${BASH_ARGV[@]}" )
+foo=($(bar "${foo[@]}"))
+unset "foo[-1]"
+
+shopt -u extdebug
+}
+
+get_files()
+{
+unset files
+
+IFS=$'\n'
+for fp in "$PWD"/*; do
+  file="${fp##*/}"
+
+  if [[ -h $fp ]]; then
+    [[ $TERM =~ 256 ]]&& color='8;5;42'|| color='6;1'
+    file+='\e[m@'
+  elif [[ -f $fp&& -x $fp|| $fp == *'.sh' ]]; then
+    [[ $TERM =~ 256 ]]&& color='8;5;210'|| color='2;1'
+    file+='\e[m*'
+  elif [[ -d $fp ]]; then
+    [[ $TERM =~ 256 ]]&& color='8;5;147'|| color='4;1'
+    file+='\e[m/'
+  else
+    [[ $TERM =~ 256 ]]&& color='8;5;248'|| color='7;2'
+  fi
+
+  files+=("${color}m$file") 
+done
+reverse files
+filesBackup=("${files[@]}") fileCount="${#filesBackup[@]}"
+
+draw_files
+}
+
+draw_files()
+{
+clear_screen
+printf '\e[3%b\n' "${files[@]}"
+hud
+}
+
+cursor()
+{
+(( fileCount > rows ))&&{
+  if (( ${#files[@]} > rows&& cursor < 1 )); then
+    cursor="$rows"
+    files=("${files[@]:0:${#files[@]}-$rows}")
+    draw_files
+  elif (( cursor > rows )); then
+    cursor=1
+    files=("${filesBackup[@]:0:${#files[@]}+$rows}")
+    draw_files
+  fi
+  (( rows-cursor == ${#files[@]} ))&& cursor="$rows"
+}||{
+  ((cursorMin=LINES-fileCount))
+  if (( cursor > rows )); then
+    cursor="$cursorMin"
+  elif (( cursor < cursorMin )); then
+    cursor="$rows"
+  fi
+}
+
+printf '\e[%dH\e[4%b\e[m' "$cursor" "${files[$cursor-$LINES]}"
+
+hist+=("$cursor"); (( cursor == hist ))||
+  printf '\e[%dH\e[3%b\e[m' "$hist" "${files[$hist-$LINES]}"
+(( i ))&& hist=("${hist[@]:1}")|| i=1
+}
+
+hud()
+{ 
+printf '\e[%dH\e[44mfm\e[m%s\e[3%b %s' "$LINES" \
+  "${status:+ ${status^} : }" "${mark:-  }" '[←]back [→]open [q]uit'
+}
+
 get_files
 for((;;)){
-  hover 2>/dev/null
-
-  mapkeys
-
-  scroll
+  cursor 2>/dev/null
+  keymap
 }
