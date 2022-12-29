@@ -13,28 +13,22 @@ Written in BASH v5+, fm is coded with heavy bashisms not intended for portabilit
 <img width="400" src="https://github.com/wick3dr0se/fm/blob/main/fm.gif?raw=true">
 </div>
 
-fm works on:
-
-&check; Linux
-
-&check; Android, using termux
-
 ## Install
-Clone this repo.
+download the repository
 
 ```bash
-$ git clone https://github.com/wick3dr0se/fm;cd fm
+git clone https://github.com/wick3dr0se/fm&& cd fm
+# also run this if you want to add fm to path
+make install
 ```
 
 ## Usage
 ```bash
-$ fm
-```
-
-if you haven't installed fm, you can execute it in the cloned dir.
-
-```bash
-$ bash fm
+bash fm
+# or
+./fm
+# or just (if installed to path)
+fm
 ```
 
 ## Interface Controls
