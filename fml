@@ -7,8 +7,6 @@
 LC_ALL=C
 LANG=C
 
-[[ $1 =~ --all|-a ]]&& shopt -s dotglob
-
 set -eEuo pipefail ignoreeof
 
 init_term()
@@ -44,7 +42,7 @@ key="${REPLY^^}"
 
 change_dir()
 {
-if [[ ${marked-} == '*' ]]; then
+if [[ ${marked-} == ?'*' ]]; then
   cd -- -|| return
   unset status mark marked
 else
@@ -138,6 +136,13 @@ keymap()
 {
 read_keys
 case $key in
+  A) if [[ $(shopt -p dotglob) =~ -u ]]; then
+      shopt -s dotglob
+    else
+      shopt -u dotglob
+    fi
+    get_files
+  ;;
   D) printf '\e[H\e[2K%s' 'New directory name: '
 
     read -r
