@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2015,SC2172,SC2207
+# SC2207 -- Prefer mapfile or read -a to spli... breaks reverse
+# SC2172 -- Trapping signals by number is not... trap -l is ez
+# SC2015 -- Note that A && B || C is not if-t... duh
+
+LC_ALL=C
+LANG=C
+
+[[ $1 =~ --all|-a ]]&& shopt -s dotglob
+
+set -eEuo pipefail ignoreeof
+
+init_term()
+{
+shopt -s checkwinsize; (:;:)
+((rows=LINES-1))
+
+printf '\e[?1049h\e[2J\e[?7l\e[?25l\e[1;%dr\e[%dH' "$LINES" "$rows"
+}
+
+end(){ printf '\e[?1049l\e[2J\e[?7h\e[?25h'&& exit; }
+
+clear_screen(){ printf '\e[2J\e[%dH' "$rows"; }
+
+reverse(){
+local -n foo="$1"
+
+shopt -s extdebug
+
+bar()( printf '%s\n' "${BASH_ARGV[@]}" )
+foo=($(bar "${foo[@]}"))
+unset "foo[-1]"
+
+shopt -u extdebug
+}
+
+read_keys()
+{
+read -rsn1
+[[ $REPLY == $'\e' ]]&& read -rsn2
+key="${REPLY^^}"
+}
+
+change_dir()
+{
+if [[ ${marked-} == '*' ]]; then
+  cd -- -|| return
+  unset status mark marked
+else
+  cd -- "${1:-$marked}"|| return
+fi
+get_files
+}
+
+get_files()
+{
+unset files
+
+IFS=$'\n'
+[[ $PWD == / ]] && PWD=
+for fp in "$PWD"/?*; do
+  file="${fp##*/}"
+
+  if [[ -h $fp ]]; then
+    [[ $TERM =~ 256 ]]&& color='8;5;42'|| color='6;1'
+    file+='\e[m@'
+  elif [[ -f $fp&& -x $fp|| $fp == *'.sh' ]]; then
+    [[ $TERM =~ 256 ]]&& color='8;5;210'|| color='2;1'
+    file+='\e[m*'
+  elif [[ -d $fp ]]; then
+    [[ $TERM =~ 256 ]]&& color='8;5;147'|| color='4;1'
+    file+='\e[m/'
+  else
+    [[ $TERM =~ 256 ]]&& color='8;5;248'|| color='7;2'
+  fi
+
+  files+=("${color}m$file")
+done
+
+reverse files
+filesTwo=("${files[@]}") fileCount="${#filesTwo[@]}"
+
+draw_files
+cursor="$rows"
+}
+
+draw_files()
+{
+i=0
+unset hist
+clear_screen
+printf '\e[3%b\e[m\n' "${files[@]}"
+hud
+}
+
+cursor()
+{
+(( fileCount > rows ))&&{
+  if (( ${#files[@]} > rows&& cursor < 1 )); then
+    cursor="$rows"
+    files=("${files[@]:0:${#files[@]}-$rows}")
+    draw_files
+  elif (( cursor > rows )); then
+    cursor=1
+    files=("${filesTwo[@]:0:${#files[@]}+$rows}")
+    draw_files
+  fi
+  (( rows-cursor == ${#files[@]} ))&& cursor="$rows"
+}||{
+  ((cursorMin=LINES-fileCount))
+  if (( cursor > rows )); then
+    cursor="$cursorMin"
+  elif (( cursor < cursorMin )); then
+    cursor="$rows"
+  fi
+}
+
+hover="${files[$cursor-$LINES]}"
+
+printf '\e[%dH\e[4%b\e[m' "$cursor" "$hover"
+
+hist+=("${cursor}H\e[3${hover}")
+(( i ))&&{
+  printf '\e[%b\e[m' "${hist[0]}"
+  hist=("${hist[@]:1}")
+}|| i=1
+
+}
+
+hud()
+{
+printf '\e[%dH\e[44mfml\e[m%s\e[3%b\e[m %s' "$LINES" \
+  "${status:+ ${status^} : }" "${mark:-  }" '[←]back [→]open [q]uit'
+}
+
+keymap()
+{
+read_keys
+case $key in
+  D) printf '\e[H\e[2K%s' 'New directory name: '
+
+    read -r
+    mkdir "$REPLY"&&{
+      status='created' mark="4m$REPLY\e[m/"
+      get_files
+    }||{
+      status='error' mark="4m$REPLY\e[m/ exist"
+      hud
+    }
+  ;;
+  F) printf '\e[H\e[2K%s' 'New file name: '
+
+    read -r
+    :>"$REPLY"&&{
+      mark="9m$REPLY" status='created'
+      get_files
+    }||{
+      status='error' mark="9m$REPLY exist"                       hud
+    }
+  ;;
+  X|\[3) [[ $marked ]]&&{
+    printf '\e[H\e[2K%b' \
+      "Do you want to delete \e[3$mark\e[m? [y/n]: "
+
+    read -rsn1
+    [[ ${REPLY,,} == 'y' ]]&&{
+      del="$path/$marked"
+      rm -fr "${del:?Not found}"&& status='deleted'
+
+      [[ $marked == "${PWD##*/}" ]]&&
+        change_dir ../|| get_files
+    }|| printf '\e[2K'
+  }
+  ;;
+  H|\[D) change_dir ../;;
+  J|\[B) ((cursor++));;
+  K|\[A) ((cursor--));;
+  L|\[C) status='marked' mark="$hover" path="$PWD"
+    marked="${mark#[0-9]*m}" marked="${marked%\\e[m?}"
+
+    change_dir||{
+      printf '\e[?1049l'
+      status='viewing'
+      cat "$marked"&& hud
+
+      for((;;)){
+        read_keys
+        case $key in
+          H|\[D) get_files&& break;;
+          L|''|\[C) "${VISUAL:-${EDITOR:-vi}}" "$marked";;
+          Q) end;;
+        esac
+      }
+    status='marked'
+    init_term&& draw_files; hud
+    }
+  ;;
+  Q) end;;
+esac
+}
+
+trap end 2
+trap 'init_term; get_files' 28
+
+init_term
+get_files
+for((;;)){
+  cursor
+
+  keymap
+}
