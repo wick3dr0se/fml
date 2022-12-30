@@ -14,25 +14,18 @@ Some people ask, 'Why not stick to `ncurses`? That's what it's made for' ..Well,
 </div>
 
 ## Install
-download the repository
-
+Download the repository
 ```bash
 git clone https://github.com/wick3dr0se/fml&& cd fml
-# also run this if you want to add fml to path
-make install
 ```
+
+_Optionally install fml to path with `make install`_
 
 ## Usage
-```bash
-bash fml
-# or
-./fml
-# or just (if installed to path, aliased, etc)
-fml
-```
+Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 
 ## Interface Controls
-A   ...   Show all (including hidden) files   
+A   ...   Toggle all (including hidden) files   
 D   ...   Create directory   
 F   ...   Create file  
 X   ...   Delete marked file/directory  
