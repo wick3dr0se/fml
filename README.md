@@ -1,6 +1,6 @@
 <div align="center">
-<h1>fml - file manager lite</h1>
-<p>Written in BASH v5+, <code>fml</code> is coded with heavy bashisms not intended for portability. <cofe>fml</code> is wrote in very clean, minimal BASH and requires no external dependencies. <code>Fml</code> is a TUI written in raw VT100 ANSI escape sequences
+<h1><a href="https://github.com/wick3dr0se/fml">fml</a> - file manager lite</h1>
+<p>Written in BASH v5+, <code>fml</code> is coded with heavy bashisms not intended for portability. <code>fml</code> is wrote in very clean, minimal BASH and requires no external dependencies. <code>Fml</code> is a TUI written in raw VT100 ANSI escape sequences
 
 Some people ask, 'Why not stick to `ncurses`? That's what it's made for' ..Well, because we don't need to and each invocation of `tput` adds 10-15ms to execution time. Also `ncurses` is less portable than ANSI escape sequences. Why would we?</p>
 
@@ -31,16 +31,12 @@ bash fml
 fml
 ```
 
-### Arguments
-```diff
---all, -a   ...   show all (including hidden) files
-```
-
 ## Interface Controls
-Q   ...   Quit  
-D   ...   Create directory  
+A   ...   Show all (including hidden) files   
+D   ...   Create directory   
 F   ...   Create file  
-X   ...   Delete marked file/directory
+X   ...   Delete marked file/directory  
+Q   ...   Quit
 
 ### Movements
 ←, H   ...   Back a directory  
