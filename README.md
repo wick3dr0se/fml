@@ -2,7 +2,7 @@
 <h1><a href="https://github.com/wick3dr0se/fml">fml</a> - file manager lite</h1>
 <p>Written in BASH v5+, <code>fml</code> is coded with heavy bashisms not intended for portability. <code>fml</code> is wrote in very clean, minimal BASH and requires no external dependencies. <code>Fml</code> is a TUI written in raw VT100 ANSI escape sequences
 
-Some people ask, 'Why not stick to `ncurses`? That's what it's made for' ..Well, because we don't need to and each invocation of `tput` adds 10-15ms to execution time. Also `ncurses` is less portable than ANSI escape sequences. Why would we?</p>
+You may wonder, 'Why not stick to `ncurses`? That's what it's made for' ..Well, because we don't need to and each invocation of `tput` adds 10-15ms to execution time. Also `ncurses` is less portable than ANSI escape sequences. Why would we?</p>
 
 <img src="https://shields.io/badge/made-with%20%20bash-green?style=flat-square&color=d5c4a1&labelColor=1d2021&logo=gnu-bash">
 <img src=https://img.shields.io/badge/Maintained%3F-yes-green.svg></img>  
@@ -25,14 +25,14 @@ _Optionally install fml to path with `make install`_
 Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 
 ## Interface Controls
-A   ...   Toggle all (including hidden) files   
-D   ...   Create directory   
-F   ...   Create file  
-X   ...   Delete marked file/directory  
-Q   ...   Quit
+`A`   ...   Toggle all (including hidden) files   
+`D`   ...   Create directory   
+`F`  ...   Create file  
+`X`   ...   Delete marked file/directory  
+`Q`   ...   Quit
 
 ### Movements
-←, H   ...   Back a directory  
-↓, J   ...   Move down  
-↑, K   ...   Move up  
-→, L   ...   Enter file/directory
+`←`, `H`   ...   Back a directory  
+`↓`, `J`   ...   Move down  
+`↑`, `K`   ...   Move up  
+`→`, `L`   ...   Enter file/directory

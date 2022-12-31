@@ -7,6 +7,8 @@
 LC_ALL=C
 LANG=C
 
+stty -echoctl
+
 set -eEuo pipefail ignoreeof
 
 init_term()
@@ -38,6 +40,14 @@ read_keys()
 read -rsn1
 [[ $REPLY == $'\e' ]]&& read -rsn2
 key="${REPLY^^}"
+}
+
+file_conc()
+{
+printf '\e[?1049l\e[2J'
+mapfile -tn 250 < "$1"
+printf '%s\n' "${MAPFILE[@]}"
+hud
 }
 
 change_dir()
@@ -75,7 +85,6 @@ for fp in "$PWD"/?*; do
 
   files+=("${color}m$file")
 done
-
 reverse files
 filesTwo=("${files[@]}") fileCount="${#filesTwo[@]}"
 
@@ -171,7 +180,7 @@ case $key in
     read -rsn1
     [[ ${REPLY,,} == 'y' ]]&&{
       del="$path/$marked"
-      rm -fr "${del:?Not found}"&& status='deleted'
+      rm -fr "${del-}"&& status='deleted'
 
       [[ $marked == "${PWD##*/}" ]]&&
         change_dir ../|| get_files
@@ -185,9 +194,8 @@ case $key in
     marked="${mark#[0-9]*m}" marked="${marked%\\e[m?}"
 
     change_dir||{
-      printf '\e[?1049l'
       status='viewing'
-      cat "$marked"&& hud
+      file_conc "$marked"
 
       for((;;)){
         read_keys
