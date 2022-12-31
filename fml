@@ -44,7 +44,7 @@ key="${REPLY^^}"
 
 file_conc()
 {
-printf '\e[?1049l\e[2J'
+printf '\e[?1049l\e[2J\e[E\e[?7l'
 mapfile -tn 250 < "$1"
 printf '%s\n' "${MAPFILE[@]}"
 hud
