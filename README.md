@@ -32,7 +32,7 @@ Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 `Q`   ...   Quit
 
 ### Movements
-`←`, `H`   ...   Back a directory  
-`↓`, `J`   ...   Move down  
-`↑`, `K`   ...   Move up  
-`→`, `L`   ...   Enter file/directory
+`H`, `←`   ...   Back a directory  
+`J`, `↓`   ...   Move down  
+`K`, `↑`   ...   Move up  
+`L`, `→`, `⏎`   ...   Enter file/directory
