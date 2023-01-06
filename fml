@@ -20,7 +20,7 @@ printf '\e[?1049h\e[2J\e[?7l\e[?25l\e[1;%dr\e[%dH' "$LINES" "$rows"
 
 end(){ printf '\e[?1049l\e[2J\e[?7h\e[?25h'&& exit; }
 
-clear_screen(){ printf '\e[2J\e[%dH' "$rows"; }
+reset_term(){ printf '\e[2J\e[%dH\e[?7l\e[?25l' "$rows"; }
 
 reverse(){
 local -n foo="$1"
@@ -37,7 +37,7 @@ read -rsn1; [[ $REPLY == $'\e' ]]&& read -rsn2
 key="${REPLY^^}"
 }
 
-prompt(){ printf '\e[H\e[2K%b ' "$1"; }
+prompt(){ printf '\e[H\e[2K\e[?7h\e[?25h%b ' "$1"; }
 
 hidden_toggle()
 {
@@ -56,43 +56,31 @@ else
 fi; get_files
 }
 
-file_conc()
+file_open()
 {
+bar='[←]back [→]open [↑]exec'
 printf '\e[?1049l\e[2J\e[E\e[?7l'
 
-mapfile -tn 250 <"$1"&& printf '%s\n' "${MAPFILE[@]}"
+mapfile -tn 250 <"$marked"&& printf '%s\n' "${MAPFILE[@]}"
 status='viewing'; hud
+}
+
+file_close()
+{
+status='marked'
+init_term&& draw_files; hud
 }
 
 file_exec()
 {
-clear_screen&& bash "$1"
+reset_term&& bash "$marked"
 status='executed'; hud
-}
-
-file_open()
-{
-bar='[←]back [→]open [↑]exec [q]uit'
-file_conc "$marked"
-
-for((;;)){
-  read_keys
-  case $key in
-    H|\[D) get_files&& break;;
-    K|\[A) file_exec "$marked"|| return;;
-    L|\[C|'') "${VISUAL:-${EDITOR:-vi}}" "$marked";;
-    Q) end;;
-  esac
-}
-
-status='marked'
-init_term&& draw_files; hud
 }
 
 make_file()
 {
 prompt 'New file name:'
-read -r
+read -re
 if :>"$REPLY"; then
   mark="9m$REPLY" status='created'
   get_files
@@ -105,7 +93,7 @@ fi
 make_dir()
 {
 prompt 'New directory name:'
-read -r
+read -re
 if mkdir "$REPLY"; then
   status='created' mark="4m$REPLY\e[m/"
   get_files
@@ -131,23 +119,15 @@ fi
 comm_exec()
 {
 prompt ':'
-read -r
-clear_screen
-if bash -c "$REPLY" 2>/dev/null; then
+read -re
+reset_term
+if bash -c "$REPLY"; then
   status='executed'
 else
   prompt 'Command not found'
   status='error'
 fi
-mark="3m$REPLY" bar='[←]back [q]uit'; hud
-
-for((;;)){
-  read_keys
-  case $key in
-    H|\[D) draw_files&& break;;
-    Q) end;;
-  esac
-}
+mark="3m$REPLY" bar='[←]back'; hud
 }
 
 get_files()
@@ -182,7 +162,7 @@ draw_files&& cursor="$rows"
 
 draw_files()
 {
-unset hist; i=0&& clear_screen
+unset hist; i=0&& reset_term
 printf '\e[3%b\e[m\n' "$rows" "${files[@]}"
 bar='[←]back [→]open [q]uit'; hud
 }
@@ -208,16 +188,16 @@ cursor()
     cursor="$rows"
   fi
 }
-
 hover="${files[$cursor-$LINES]}"
-
 printf '\e[%dH\e[4%b\e[m' "$cursor" "$hover"
 
-hist+=("${cursor}H\e[3${hover}")
-(( i ))&&{
-  printf '\e[%b\e[m' "${hist[0]}"
-  hist=("${hist[@]:1}")
-}|| i=1
+(( fileCount == 1 ))||{
+  hist+=("${cursor}H\e[3${hover}")
+  (( i ))&&{
+    printf '\e[%b\e[m' "${hist[0]}"
+    hist=("${hist[@]:1}")
+  }|| i=1
+}
 }
 
 hud()
@@ -230,7 +210,15 @@ keymap()
 {
 read_keys
 case $key in
-  :) comm_exec;;
+  :) comm_exec
+    for((;;)){
+      read_keys
+      case $key in
+        :) comm_exec;;
+        H|\[D) draw_files&& break;;
+      esac
+    }
+  ;;
   A) hidden_toggle;;
   D) make_dir;;
   F) make_file;;
@@ -241,7 +229,19 @@ case $key in
   L|\[C|'') status='marked' mark="$hover" path="$PWD"
     marked="${mark#[0-9]*m}" marked="${marked%\\e[m?}"
 
-    change_dir|| file_open
+    change_dir||{
+      file_open
+
+      for((;;)){
+        read_keys
+        case $key in
+          H|\[D) draw_files&& break;;
+          K|\[A) file_exec|| return;;
+          L|\[C|'') "${VISUAL:-${EDITOR:-vi}}" "$marked";;
+        esac
+      }
+      file_close
+    }
   ;;
   Q) end;;
 esac
@@ -251,4 +251,4 @@ trap end 2
 trap 'init_term&& get_files' 28
 
 init_term&& get_files
-for((;;)){ cursor&& keymap; }
+for((;;)){ cursor; keymap; }
