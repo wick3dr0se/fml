@@ -133,7 +133,7 @@ comm_exec()
 prompt ':'
 read -r
 clear_screen
-if "$REPLY" 2>/dev/null; then
+if bash -c "$REPLY" 2>/dev/null; then
   status='executed'
 else
   prompt 'Command not found'
