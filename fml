@@ -48,7 +48,7 @@ get_files
 
 change_dir()
 {
-if [[ ${marked-} == ?'*' ]]; then
+if [[ ${marked-} == \* ]]; then
   cd -- -|| return
   unset status mark marked
 else
@@ -58,25 +58,21 @@ fi; get_files
 
 file_conc()
 {
-execute='[↑]exec '
 printf '\e[?1049l\e[2J\e[E\e[?7l'
 
-mapfile -tn 250 <"$1"
-printf '%s\n' "${MAPFILE[@]}"
-status='viewing'
-hud
+mapfile -tn 250 <"$1"&& printf '%s\n' "${MAPFILE[@]}"
+status='viewing'; hud
 }
 
 file_exec()
 {
-clear_screen
-bash "$1"
-status='executed'
-hud
+clear_screen&& bash "$1"
+status='executed'; hud
 }
 
 file_open()
 {
+bar='[←]back [→]open [↑]exec [q]uit'
 file_conc "$marked"
 
 for((;;)){
@@ -89,7 +85,6 @@ for((;;)){
   esac
 }
 
-unset execute
 status='marked'
 init_term&& draw_files; hud
 }
@@ -133,13 +128,35 @@ else
 fi
 }
 
+comm_exec()
+{
+prompt ':'
+read -r
+clear_screen
+if "$REPLY" 2>/dev/null; then
+  status='executed'
+else
+  prompt 'Command not found'
+  status='error'
+fi
+mark="3m$REPLY" bar='[←]back [q]uit'; hud
+
+for((;;)){
+  read_keys
+  case $key in
+    H|\[D) draw_files&& break;;
+    Q) end;;
+  esac
+}
+}
+
 get_files()
 {
 unset files
 
 IFS=$'\n'
 [[ $PWD == / ]] && PWD=
-for fp in "$PWD"/?*; do
+for fp in "$PWD"/*; do
   file="${fp##*/}"
 
   if [[ -h $fp ]]; then
@@ -166,7 +183,8 @@ draw_files&& cursor="$rows"
 draw_files()
 {
 unset hist; i=0&& clear_screen
-printf '\e[3%b\e[m\n' "$rows" "${files[@]}"&& hud
+printf '\e[3%b\e[m\n' "$rows" "${files[@]}"
+bar='[←]back [→]open [q]uit'; hud
 }
 
 cursor()
@@ -205,14 +223,14 @@ hist+=("${cursor}H\e[3${hover}")
 hud()
 {
 printf '\e[%dH\e[44mfml\e[m%s\e[3%b\e[m %s' "$LINES" \
-  "${status:+ ${status^} : }" "${mark:-  }" \
-  "[←]back ${execute-}[→]open [q]uit"
+  "${status:+ ${status^} : }" "${mark:-  }" "$bar"
 }
 
 keymap()
 {
 read_keys
 case $key in
+  :) comm_exec;;
   A) hidden_toggle;;
   D) make_dir;;
   F) make_file;;
