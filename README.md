@@ -25,6 +25,7 @@ _Optionally install fml to path with `make install`_
 Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 
 ## Interface Controls
+`:`   ...   Execute command  
 `A`   ...   Toggle all (including hidden) files   
 `D`   ...   Create directory   
 `F`  ...   Create file  
@@ -32,7 +33,7 @@ Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 `Q`   ...   Quit
 
 ### Movements
-`H`, `←`   ...   Back a directory  
+`H`, `←`   ...   Back  
 `J`, `↓`   ...   Move down  
 `K`, `↑`   ...   Move up  
 `L`, `→`, `⏎`   ...   Enter file/directory
