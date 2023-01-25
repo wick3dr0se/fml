@@ -73,7 +73,8 @@ init_term&& draw_files; hud
 
 file_exec()
 {
-reset_term&& bash "$marked"
+printf '\e[?1049l\e[2J\e[%dH\e[?7h\e[?25h' "$rows"
+bash "$marked"
 status='executed'; hud
 }
 
@@ -81,24 +82,14 @@ make_file()
 {
 prompt 'New file name:'
 read -re
-if :>"$REPLY"; then
+if [[ $REPLY == */ ]]&& mkdir "$REPLY"; then
+  status='created' mark="4m${REPLY%/}\e[m/"
+  get_files
+elif :>"$REPLY"; then
   mark="9m$REPLY" status='created'
   get_files
 else
   status='error' mark="9m$REPLY exist"
-  hud
-fi
-}
-
-make_dir()
-{
-prompt 'New directory name:'
-read -re
-if mkdir "$REPLY"; then
-  status='created' mark="4m$REPLY\e[m/"
-  get_files
-else
-  status='error' mark="4m$REPLY\e[m/ exist"
   hud
 fi
 }
@@ -120,7 +111,7 @@ comm_exec()
 {
 prompt ':'
 read -re
-reset_term
+printf '\e[?1049l\e[2J\e[%dH\e[?25h' "$rows"
 if bash -c "$REPLY"; then
   status='executed'
 else
@@ -215,12 +206,11 @@ case $key in
       read_keys
       case $key in
         :) comm_exec;;
-        H|\[D) draw_files&& break;;
+        H|\[D) printf '\e[?1049h'&& draw_files&& break;;
       esac
     }
   ;;
   A) hidden_toggle;;
-  D) make_dir;;
   F) make_file;;
   X|\[3) [[ $marked ]]&& file_del;;
   H|\[D) change_dir ../;;
@@ -236,7 +226,7 @@ case $key in
         read_keys
         case $key in
           H|\[D) draw_files&& break;;
-          K|\[A) file_exec|| return;;
+          K|\[A) file_exec;;
           L|\[C|'') "${VISUAL:-${EDITOR:-vi}}" "$marked";;
         esac
       }

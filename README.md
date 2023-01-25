@@ -27,8 +27,7 @@ Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 ## Interface Controls
 `:`   ...   Execute command  
 `A`   ...   Toggle all (including hidden) files   
-`D`   ...   Create directory   
-`F`  ...   Create file  
+`F`   ...   Create file/directory (directory ends with /)  
 `X`   ...   Delete marked file/directory  
 `Q`   ...   Quit
 
