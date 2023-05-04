@@ -54,7 +54,7 @@ for((;;)){
         for((;;)){
           read_keys
           case $KEY in
-            H|\[D) printf '\e[2J'; get_files; status_bar; break;;
+            H|\[D) printf '\e[?1049l\e[2J'; get_files; status_bar; break;;
             L|\[C) "${EDITOR:-${VISUAL:-vim}}" "$selected"
           esac
         }
