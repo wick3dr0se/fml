@@ -16,16 +16,14 @@ get_files(){
   unset i hist symLinks directories executables plainFiles files
   for _ in *; do
     if [[ -h $_ ]]; then
-      symLinks+=("6m$_\e[m")
+      files+=("6m$_\e[m")
     elif [[ -d $_ ]]; then
-      directories+=("4m$_\e[m")
+      files+=("4m$_\e[m")
     elif [[ -x $_|| $_ == *'.sh' ]]; then
-      executables+=("2m$_\e[m")
+      files+=("2m$_\e[m")
     else
-      plainFiles+=("9m$_\e[m")
+      files+=("9m$_\e[m")
     fi
-
-    files=("${directories[@]}" "${executables[@]}" "${symLinks[@]}" "${plainFiles[@]}")
   done
 
   printf '\e[999H\e[3%b\n' "${files[@]}"
