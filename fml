@@ -37,14 +37,19 @@ get_files(){
 }
 
 files_selected(){
-  if [[ -d "$selected" ]]; then
-    change_dir "$selected"; get_files; status_bar "$selected"
-  elif [[ -f "$selected" ]]; then
+  if [[ -d "$1" ]]; then
+    change_dir "$1"; get_files; status_bar "$1"
+  elif [[ -f "$1" ]]; then
     printf '\e[?1049l\e[2J\e[999H'
-    cat "$selected"
+    file_read "$1"
     
-    status_bar "$selected"; file_keymap
+    status_bar "$1"; file_keymap
   fi
+}
+
+file_read(){
+  mapfile -tn 250 <"$1"
+  printf '%s\n' "${MAPFILE[@]}"
 }
 
 infinite_boundries(){
@@ -87,7 +92,7 @@ main_keymap(){
     K|\[A) ((cursor--));;
     L|\[C) selected="${files[cursor-LINES]#*[0-9]m}" selected="${selected%\\e*}"
       
-      status_bar "$selected"; files_selected
+      status_bar "$selected"; files_selected "$selected"
     ;;
   esac
 }
