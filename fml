@@ -11,7 +11,7 @@ read_keys(){
 change_dir(){ cd "${1:-../}"; printf '\e[2J'; }
 
 status_bar(){
-  printf '\e[999H\e[2K\e[1;44;30mFML\e[m%s' "${1:+: $1}"
+  printf '\e[999H\e[1;44;30mFML\e[m%s' "${1:+: $1}"
 }
 
 get_files(){
@@ -67,7 +67,7 @@ file_keymap(){
   for((;;)){
     read_keys
     case $KEY in
-      H|\[D) printf '\e[?1049l\e[2J'; get_files; status_bar; break;;
+      H|\[D) printf '\e[?1049l\e[2J\e[?7l'; get_files; status_bar; break;;
       L|\[C) "${EDITOR:-${VISUAL:-vim}}" "$selected"
     esac
   }
@@ -76,7 +76,7 @@ file_keymap(){
 main_keymap(){
   read_keys
   case $KEY in
-    Q) printf '\e[?1049l'; exit;;
+    Q) printf '\e[?1049l\e[?25h\e[?7h'; exit;;
     H|\[D) change_dir; get_files; status_bar;;
     J|\[B) ((cursor++));;
     K|\[A) ((cursor--));;
@@ -87,7 +87,7 @@ main_keymap(){
   esac
 }
 
-printf '\e[?1049h\e[2J\e[?25l\e[999H'
+printf '\e[?1049h\e[2J\e[?25l\e[?7l\e[999H'
 
 get_files; status_bar
 for((;;)){ main_keymap; infinite_boundries; hover_file; }
