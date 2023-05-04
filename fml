@@ -17,6 +17,27 @@ status_bar(){
   printf '\e[999H\e[1;44;30mFML\e[m%s' "${1:+: $1}"
 }
 
+infinite_boundries(){
+  if (( cursor > rows )); then
+    ((cursor=LINES-${#files[@]}))
+  elif (( cursor < LINES-${#files[@]} )); then
+    cursor="$rows"
+  fi
+
+  printf '\e[%dH' "$cursor"
+}
+
+hover_file(){
+  hover="${files[cursor-LINES]}"
+  hist+=("${cursor}H\e[3${hover}")
+  (( ${i:=0} ))&&{
+    printf '\e[%b\e[m' "${hist[0]}"
+    hist=("${hist[@]:1}")
+  }|| i=1
+
+  printf '\e[%dH\e[1;4%b' "$cursor" "$hover"
+}
+
 get_files(){
   unset i hist symLinks directories executables plainFiles files
   for _ in *; do
@@ -52,32 +73,11 @@ file_read(){
   printf '%s\n' "${MAPFILE[@]}"
 }
 
-infinite_boundries(){
-  if (( cursor > rows )); then
-    ((cursor=LINES-${#files[@]}))
-  elif (( cursor < LINES-${#files[@]} )); then
-    cursor="$rows"
-  fi
-
-  printf '\e[%dH' "$cursor"
-}
-
-hover_file(){
-  hover="${files[cursor-LINES]}"
-  hist+=("${cursor}H\e[3${hover}")
-  (( ${i:=0} ))&&{
-    printf '\e[%b\e[m' "${hist[0]}"
-    hist=("${hist[@]:1}")
-  }|| i=1
-
-  printf '\e[%dH\e[1;4%b' "$cursor" "$hover"
-}
-
 file_keymap(){
   for((;;)){
     read_keys
     case $KEY in
-      H|\[D) printf '\e[?1049l\e[2J\e[?7l'; get_files; status_bar; break;;
+      H|\[D) printf '\e[?1049l\e[2J\e[?25l\e[?7l'; get_files; status_bar; break;;
       L|\[C) "${EDITOR:-${VISUAL:-vim}}" "$selected"
     esac
   }
