@@ -11,7 +11,7 @@ read_keys(){
   KEY="${REPLY^^}"
 }
 
-change_dir(){ cd "$1" 2>/dev/null; printf '\e[2J'; }
+change_dir(){ cursor="$rows"; cd "$1" 2>/dev/null; printf '\e[2J'; }
 
 status_bar(){
   printf '\e[999H\e[1;44;30mFML\e[m%s' "${1:+: $1}"
