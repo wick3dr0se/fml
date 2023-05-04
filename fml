@@ -29,6 +29,19 @@ get_files(){
   printf '\e[999H\e[3%b\n' "${files[@]}"
 }
 
+files_selected(){
+  if [[ -d "$selected" ]]; then
+    cd "$selected"; printf '\e[2J'
+    
+    get_files; status_bar "$selected"
+  elif [[ -f "$selected" ]]; then
+    printf '\e[?1049l\e[2J\e[999H'
+    cat "$selected"
+    
+    status_bar "$selected"; file_keymap
+  fi
+}
+
 infinite_boundries(){
   if (( cursor > LINES-1 )); then
     ((cursor=LINES-${#files[@]}))
@@ -68,16 +81,8 @@ main_keymap(){
     J|\[B) ((cursor++));;
     K|\[A) ((cursor--));;
     L|\[C) selected="${files[cursor-LINES]#*[0-9]m}" selected="${selected%\\e*}"
-      status_bar "$selected"
-      if [[ -d "$selected" ]]; then
-        cd "$selected"; printf '\e[2J'; get_files; status_bar "$selected"
-      elif [[ -f "$selected" ]]; then
-        printf '\e[?1049l\e[2J\e[999H'
-        cat "$selected"
-        status_bar "$selected"
-
-        file_keymap
-      fi
+      
+      status_bar "$selected"; files_selected
     ;;
   esac
 }
