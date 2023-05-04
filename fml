@@ -1,10 +1,10 @@
 #!/bin/bash
 
-shopt -s checkwinsize; (:;:)
-# shopt -s dotglob
-
-((rows=LINES-1))
-cursor="$rows"
+term_init(){
+  shopt -s checkwinsize; (:;:)
+  printf '\e[?1049h\e[2J\e[?25l\e[?7l\e[999H'
+  ((rows=LINES-1))
+}
 
 read_keys(){
   read -rsn1; [[ $REPLY == $'\e' ]]&& read -rsn2
@@ -16,11 +16,23 @@ status_bar(){
 }
 
 infinite_boundries(){
-  if (( cursor > rows )); then
-    ((cursor=LINES-${#files[@]}))
-  elif (( cursor < LINES-${#files[@]} )); then
-    cursor="$rows"
-  fi
+  (( ${#files[@]} > rows ))&&{
+    if (( cursor > rows )); then
+      cursor=1
+      files=("${filesB[@]:0:${#files[@]}+$rows}")
+      draw_files
+    elif (( cursor < 1 )); then
+      cursor="$rows"
+      files=("${files[@]:0:${#files[@]}-$rows}")
+      draw_files
+    fi
+  }||{
+    if (( cursor > rows )); then
+      ((cursor=LINES-${#files[@]}))
+    elif (( cursor < LINES-${#files[@]} )); then
+      cursor="$rows"
+    fi
+  }
 
   printf '\e[%dH' "$cursor"
 }
@@ -47,8 +59,7 @@ hidden_toggle(){
 }
 
 get_files(){
-  unset i hist symLinks directories executables plainFiles files
-  printf '\e[2J'
+  unset files
 
   for _ in *; do
     if [[ $_ == '*' ]]; then
@@ -64,7 +75,17 @@ get_files(){
     fi
   done
 
-  printf '\e[999H\e[3%b\n' "${files[@]}"
+  filesB=("${files[@]}")
+  draw_files
+}
+
+draw_files(){
+  unset i hist
+  
+  printf '\e[2J\e[999H'
+  printf '\e[3%b\n' "${files[@]}"
+  
+  status_bar "$selected"
 }
 
 files_selected(){
@@ -91,7 +112,7 @@ file_keymap(){
   for((;;)){
     read_keys
     case $KEY in
-      H|\[D) printf '\e[?1049l\e[?25l\e[?7l'; get_files; status_bar; break;;
+      H|\[D) printf '\e[?1049h\e[?25l\e[?7l'; get_files; status_bar; break;;
       L|\[C) "${EDITOR:-${VISUAL:-vim}}" "$selected"
     esac
   }
@@ -112,7 +133,8 @@ main_keymap(){
   esac
 }
 
-printf '\e[?1049h\e[?25l\e[?7l\e[999H'
+trap 'term_init; get_files; status_bar' 28
 
+term_init; cursor="$rows"
 get_files; hover_file; status_bar
 for((;;)){ main_keymap; infinite_boundries; hover_file; }
