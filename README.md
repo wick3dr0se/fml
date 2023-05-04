@@ -19,7 +19,10 @@ Download the repository
 git clone https://github.com/wick3dr0se/fml&& cd fml
 ```
 
-_Optionally install fml to path with `make install`_
+_Optionally install fml to path_
+```bash
+cp fml /usr/local/bin
+```
 
 ## Usage
 Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
