@@ -31,16 +31,6 @@ get_files(){
   printf '\e[999H\e[3%b\n' "${files[@]}"
 }
 
-file_keymap(){
-  for((;;)){
-    read_keys
-    case $KEY in
-      H|\[D) printf '\e[?1049l\e[2J'; get_files; status_bar; break;;
-      L|\[C) "${EDITOR:-${VISUAL:-vim}}" "$selected"
-    esac
-  }
-}
-
 infinite_boundries(){
   if (( cursor > LINES-1 )); then
     ((cursor=LINES-${#files[@]}))
@@ -62,11 +52,17 @@ hover_file(){
   printf '\e[%dH\e[1;4%b' "$cursor" "$hover"
 }
 
-printf '\e[?1049h\e[2J\e[?25l\e[999H'
+file_keymap(){
+  for((;;)){
+    read_keys
+    case $KEY in
+      H|\[D) printf '\e[?1049l\e[2J'; get_files; status_bar; break;;
+      L|\[C) "${EDITOR:-${VISUAL:-vim}}" "$selected"
+    esac
+  }
+}
 
-get_files
-status_bar
-for((;;)){
+main_keymap(){
   read_keys
   case $KEY in
     Q) printf '\e[?1049l'; exit;;
@@ -86,7 +82,9 @@ for((;;)){
       fi
     ;;
   esac
-
-  infinite_boundries
-  hover_file
 }
+
+printf '\e[?1049h\e[2J\e[?25l\e[999H'
+
+get_files; status_bar
+for((;;)){ main_keymap; infinite_boundries; hover_file; }
