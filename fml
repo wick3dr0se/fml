@@ -12,7 +12,7 @@ read_keys(){
 }
 
 status_bar(){
-  printf '\e[999H\e[2K\e[1;44;30mFML\e[m%s' "${1:+: $1}"
+  printf '\e[999H\e[2K\e[1;41;30mFML\e[m%s' "${1:+: $1}"
 }
 
 infinite_boundries(){
@@ -54,7 +54,7 @@ get_files(){
     if [[ $_ == '*' ]]; then
       files=('9mempty')
     elif [[ -h $_ ]]; then
-      files+=("6m$_\e[m")
+      files+=("3m$_\e[m")
     elif [[ -d $_ ]]; then
       files+=("4m$_\e[m")
     elif [[ -x $_|| $_ == *'.sh' ]]; then
