@@ -12,7 +12,7 @@ read_keys(){
 }
 
 status_bar(){
-  printf '\e[999H\e[2K\e[1;41;30mFML\e[m%s' \
+  printf '\e[999H\e[2K\e[41;1;30mFML\e[m%s' \
     "${1:-${selected:+ $selected} $PWD}"
 }
 
@@ -100,14 +100,15 @@ draw_files(){
 }
 
 file_selected(){
-  selected="${files[cursor-LINES]#*[0-9]m}" selected="${selected%\\e*}"
+  selected="${hover#[0-9]m}" selected="${selected%\\e*}"
+  [[ $selected == '[empty]' ]]&& unset selected
   selectedPath="${PWD%/$selected}/$selected"
 
   if [[ -d "$selected" ]]; then
     cd "$selected" 2>/dev/null&&{ cursor="$rows"; get_files; }
   elif [[ -f "$selected" ]]; then
     printf '\e[?1049l\e[2J\e[999H'
-    file_read "$selected"
+    file_read "$selected"; status_bar
     
     file_keymap
   fi
