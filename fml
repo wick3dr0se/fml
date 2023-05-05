@@ -12,7 +12,9 @@ read_keys(){
 }
 
 status_bar(){
-  printf '\e[999H\e[2K\e[1;41;30mFML\e[m%s' "${1:+: $1}"
+
+  printf '\e[999H\e[2K\e[1;41;30mFML\e[m%s' \
+    "${1:-${selected:+ $selected} $PWD}"
 }
 
 infinite_scroll(){
@@ -60,12 +62,20 @@ hidden_toggle(){
   get_files; status_bar
 }
 
+page_up(){
+  if (( ${#files[@]} > rows )); then
+    cursor=1
+  else
+    ((cursor=LINES-${#files[@]}))
+  fi
+}
+
 get_files(){
   unset files
 
   for _ in *; do
     if [[ $_ == '*' ]]; then
-      files=('9mempty')
+      files=('9m[empty]\e[m')
     elif [[ -h $_ ]]; then
       files+=("3m$_\e[m@")
     elif [[ -d $_ ]]; then
@@ -87,13 +97,13 @@ draw_files(){
   printf '\e[2J\e[999H'
   printf '\e[3%b\n' "${files[@]}"
   
-  status_bar "$selected"
+  status_bar
 }
 
 files_selected(){
   if [[ -d "$1" ]]; then
     if cd "$1" 2>/dev/null; then
-      cursor="$rows"; get_files; status_bar "$1"
+      cursor="$rows"; get_files; status_bar
     else
       status_bar
     fi
@@ -101,7 +111,7 @@ files_selected(){
     printf '\e[?1049l\e[2J\e[999H'
     file_read "$1"
     
-    status_bar "$1"; file_keymap
+    status_bar; file_keymap
   fi
 }
 
@@ -124,20 +134,16 @@ main_keymap(){
   read_keys
   case $KEY in
     Q) printf '\e[?1049l\e[?25h\e[?7h'; exit;;
-    A) hidden_toggle;;
-    \[H|\[5) if (( ${#files[@]} > rows )); then
-        cursor=1
-      else
-        ((cursor=LINES-${#files[@]}))
-      fi
-    ;;
+    .) hidden_toggle;;
+    \[H) cd ~/; get_files;;
+    \[5) page_up;;
     \[6) cursor=1;;
     H|\[D) cursor="$rows"; cd ../; get_files; status_bar;;
     J|\[B) ((cursor++));;
     K|\[A) ((cursor--));;
     L|\[C) selected="${files[cursor-LINES]#*[0-9]m}" selected="${selected%\\e*}"
       
-      status_bar "$selected"; files_selected "$selected"
+      status_bar; files_selected "$selected"
     ;;
   esac
 }
