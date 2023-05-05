@@ -133,6 +133,7 @@ main_keymap(){
   esac
 }
 
+trap 'printf "\e[?1049l\e[?25h\e[?7h"; exit' 2
 trap 'term_init; get_files; status_bar' 28
 
 term_init; cursor="$rows"
