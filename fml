@@ -15,9 +15,11 @@ status_bar(){
   printf '\e[999H\e[2K\e[1;41;30mFML\e[m%s' "${1:+: $1}"
 }
 
-infinite_boundries(){
-  if (( ${#files[@]} > rows )); then
-    if (( cursor > rows )); then
+infinite_scroll(){
+  if (( ${#filesB[@]} > rows )); then
+    if (( cursor < LINES-${#files[@]} )); then
+      cursor="$rows"
+    elif (( cursor > rows )); then
       cursor=1
       files=("${filesB[@]:0:${#files[@]}+$rows}")
       draw_files
@@ -38,7 +40,7 @@ infinite_boundries(){
 }
 
 hover_file(){
-  hover="${files[cursor-LINES]}"
+  hover="${files[cursor-LINES]:-}"
   hist+=("${cursor}H\e[3${hover}")
   (( ${i:=0} ))&&{
     printf '\e[%b\e[m' "${hist[0]}"
@@ -138,4 +140,4 @@ trap 'term_init; get_files; status_bar' WINCH
 
 term_init; cursor="$rows"
 get_files; hover_file; status_bar
-for((;;)){ main_keymap; infinite_boundries; hover_file; }
+for((;;)){ main_keymap; infinite_scroll; hover_file; }
