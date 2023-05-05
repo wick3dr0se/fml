@@ -16,7 +16,7 @@ status_bar(){
 }
 
 infinite_boundries(){
-  (( ${#files[@]} > rows ))&&{
+  if (( ${#files[@]} > rows )); then
     if (( cursor > rows )); then
       cursor=1
       files=("${filesB[@]:0:${#files[@]}+$rows}")
@@ -26,13 +26,13 @@ infinite_boundries(){
       files=("${files[@]:0:${#files[@]}-$rows}")
       draw_files
     fi
-  }||{
+  else
     if (( cursor > rows )); then
       ((cursor=LINES-${#files[@]}))
     elif (( cursor < LINES-${#files[@]} )); then
       cursor="$rows"
     fi
-  }
+  fi
 
   printf '\e[%dH' "$cursor"
 }
@@ -133,8 +133,8 @@ main_keymap(){
   esac
 }
 
-trap 'printf "\e[?1049l\e[?25h\e[?7h"; exit' 2
-trap 'term_init; get_files; status_bar' 28
+trap 'printf "\e[?1049l\e[?25h\e[?7h"; exit' INT
+trap 'term_init; get_files; status_bar' WINCH
 
 term_init; cursor="$rows"
 get_files; hover_file; status_bar
