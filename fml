@@ -47,7 +47,7 @@ hover_file(){
     hist=("${hist[@]:1}")
   }|| i=1
 
-  printf '\e[%dH\e[1;4%b' "$cursor" "$hover"
+  printf '\e[%dH\e[1;7;9%b' "$cursor" "$hover"
 }
 
 hidden_toggle(){
@@ -67,11 +67,11 @@ get_files(){
     if [[ $_ == '*' ]]; then
       files=('9mempty')
     elif [[ -h $_ ]]; then
-      files+=("3m$_\e[m")
+      files+=("3m$_\e[m@")
     elif [[ -d $_ ]]; then
-      files+=("4m$_\e[m")
+      files+=("4m$_\e[m/")
     elif [[ -x $_|| $_ == *'.sh' ]]; then
-      files+=("2m$_\e[m")
+      files+=("2m$_\e[m*")
     else
       files+=("9m$_\e[m")
     fi
@@ -125,6 +125,13 @@ main_keymap(){
   case $KEY in
     Q) printf '\e[?1049l\e[?25h\e[?7h'; exit;;
     A) hidden_toggle;;
+    \[H|\[5) if (( ${#files[@]} > rows )); then
+        cursor=1
+      else
+        ((cursor=LINES-${#files[@]}))
+      fi
+    ;;
+    \[6) cursor=1;;
     H|\[D) cursor="$rows"; cd ../; get_files; status_bar;;
     J|\[B) ((cursor++));;
     K|\[A) ((cursor--));;
