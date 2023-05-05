@@ -26,7 +26,8 @@ cp fml /usr/local/bin
 Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 
 ## Interface Controls
-`A`   ...   Toggle all (including hidden) files  
+`.`   ...   Toggle all (including hidden) files  
+`X`   ...   Delete file  
 `Q`   ...   Quit
 
 ### Movements
@@ -35,5 +36,5 @@ Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 `K`, `↑`   ...   Move up  
 `L`, `→`   ...   Open
 
-`Home`, `PageUp`   ...   Scroll to top
+`Home`, `PageUp`   ...   Scroll to top  
 `PageDown`   ...   Scroll to bottom
