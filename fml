@@ -114,6 +114,12 @@ hidden_toggle(){
   get_files; status_bar
 }
 
+change_directory(){
+  status_bar "Change directory to: "; read -r
+  
+  reply_path&&{ cd "$REPLY"; get_files; }
+}
+
 page_up(){
   if (( ${#files[@]} > rows )); then
     cursor=1
@@ -158,16 +164,17 @@ main_keymap(){
   case $KEY in
     Q) printf '\e[?1049l\e[?25h\e[?7h'; exit;;
     .) hidden_toggle;;
+    /) change_directory;;
     \[H) cd ~/; get_files;;
     \[5) page_up;;
     \[6) cursor=1;;
     C) [[ $selected ]]&& copy_selected;;
     M) [[ $selected ]]&& move_selected;;
     X) [[ $selected ]]&& delete_selected;;
-    H|\[D) cursor="$rows"; cd ../; get_files; status_bar;;
-    J|\[B) ((cursor++));;
-    K|\[A) ((cursor--));;
-    L|\[C) file_selected;;
+    A|H|\[D) cursor="$rows"; cd ../; get_files; status_bar;;
+    -|S|J|\[B) ((cursor++));;
+    +|W|K|\[A) ((cursor--));;
+    D|L|\[C) file_selected;;
   esac
 }
 
