@@ -27,6 +27,8 @@ Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 
 ## Interface Controls
 `.`   ...   Toggle all (including hidden) files  
+`C`   ...   Copy file to
+`M`   ...   Move file to
 `X`   ...   Delete file  
 `Q`   ...   Quit
 
