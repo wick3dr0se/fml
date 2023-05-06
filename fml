@@ -116,6 +116,15 @@ file_selected(){
   status_bar
 }
 
+copy_selected(){
+  status_bar "Copy $selected to: "; read -r
+
+  [[ $REPLY ]]||{ get_files; return; }
+  [[ -e $REPLY ]]&&{
+    cp -r "$selectedPath" "$REPLY"&&{ get_files; status_bar "$selected copied to $REPLY"; }
+  }
+}
+
 move_selected(){
   status_bar "Move $selected to: "; read -r
   
@@ -155,6 +164,7 @@ main_keymap(){
     \[H) cd ~/; get_files;;
     \[5) page_up;;
     \[6) cursor=1;;
+    C) [[ $selected ]]&& copy_selected;;
     M) [[ $selected ]]&& move_selected;;
     X) [[ $selected ]]&& delete_selected;;
     H|\[D) cursor="$rows"; cd ../; get_files; status_bar;;
