@@ -28,6 +28,7 @@ Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 ## Interface Controls
 `.`   ...   Toggle all (including hidden) files  
 `/`   ...   Change directory  
+`:`   ...   Execute command
 `N`   ...   Create file or directory/  
 `C`   ...   Copy file  
 `M`   ...   Move file  
@@ -35,9 +36,9 @@ Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 `Q`   ...   Quit
 
 ### Movements
-`A`, `H`, `←`   ...   Back  
-`-`, `S`, `J`, `↓`   ...   Move down  
-`+`, `W`, `K`, `↑`   ...   Move up  
-`D`, `L`, `→`   ...   Open
+`←`, `H`, `A`   ...   Back  
+`↓`, `J`, `S`, `-`   ...   Move down  
+`↑`, `K`, `W`, `+`   ...   Move up  
+`→`, `L`, `D`   ...   Open  
 `Home`, `PageUp`   ...   Scroll to top  
 `PageDown`   ...   Scroll to bottom
