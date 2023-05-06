@@ -28,7 +28,7 @@ Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 ## Interface Controls
 `.`   ...   Toggle all (including hidden) files  
 `/`   ...   Change directory  
-`:`   ...   Execute command
+`:`   ...   Execute command  
 `N`   ...   Create file or directory/  
 `C`   ...   Copy file  
 `M`   ...   Move file  
