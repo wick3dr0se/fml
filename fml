@@ -12,8 +12,8 @@ read_keys(){
 }
 
 status_bar(){
-  printf '\e[999H\e[2K\e[41;1;30mFML\e[m%s' \
-    "${1:-${selected:+ $selected} $PWD}"
+  printf '\e[999H\e[2K\e[41;1;30mFML\e[m %s' \
+    "${1:-${selected:-$PWD} ${selected:+$PWD}}"
 }
 
 infinite_scroll(){
@@ -116,11 +116,20 @@ file_selected(){
   status_bar
 }
 
+move_selected(){
+  status_bar "Move $selected to: "; read -r
+  
+  [[ $REPLY ]]||{ get_files; return; }
+  [[ -e $REPLY ]]&&{
+    mv "$selectedPath" "$REPLY"&&{ get_files; status_bar "$selected moved to $REPLY"; }
+  }
+}
+
 delete_selected(){
-  status_bar " Delete $selectedPath? [y/N]: "; read -r
+  status_bar "Delete $selectedPath? [y/N]: "; read -r
   [[ ${REPLY,,} =~ ^y(es)?$ ]]||{ get_files; return; }
   
-  rm -r "$selectedPath"&&{ get_files; status_bar " $selectedPath deleted"; }
+  rm -r "$selectedPath"&&{ get_files; status_bar "$selectedPath deleted"; }
 }
 
 file_read(){
@@ -146,7 +155,8 @@ main_keymap(){
     \[H) cd ~/; get_files;;
     \[5) page_up;;
     \[6) cursor=1;;
-    X) delete_selected;;
+    M) [[ $selected ]]&& move_selected;;
+    X) [[ $selected ]]&& delete_selected;;
     H|\[D) cursor="$rows"; cd ../; get_files; status_bar;;
     J|\[B) ((cursor++));;
     K|\[A) ((cursor--));;
