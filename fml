@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -o vi
+
 term_init(){
   shopt -s checkwinsize; (:;:)
   printf '\e[?1049h\e[2J\e[?25l\e[?7l\e[999H'
@@ -18,8 +20,13 @@ reply_path(){
 }
 
 status_bar(){
-  printf '\e[999H\e[2K\e[41;1;30mFML\e[m %s' \
-    "${1:-${selected:-$PWD} ${selected:+$PWD}}"
+  if [[ $1 ]]; then
+    printf '\e[999H\e[2K\e[?25h\e[41;1;30mFML\e[m '
+    read -rep "$1"&&{ printf '\e[?25l'; get_files; }
+  else
+    printf '\e[999H\e[2K\e[41;1;30mFML\e[m %s' \
+      "${selected:-$PWD} ${selected:+$PWD}"
+  fi
 }
 
 get_files(){
@@ -45,10 +52,10 @@ get_files(){
 
 draw_files(){
   unset i hist
-  
+
   printf '\e[2J\e[999H'
   printf '\e[3%b\n' "${files[@]}"
-  
+
   status_bar
 }
 
@@ -98,19 +105,18 @@ hidden_toggle(){
 }
 
 change_directory(){
-  status_bar "Change directory to: "; read -r
-  
+  statuS_bar 'Change directory to: '
   reply_path&&{ cd "$REPLY"; get_files; }
 }
 
 execute_command(){
-  status_bar "Execute: "; read -r
-  [[ $REPLY ]]&&{ printf '\e[2J'; bash -c "$REPLY"; status_bar; }
+  status_bar 'Execute: '
+  [[ $REPLY ]]&&{ printf '\e[2J\e[999H'; bash -c "$REPLY"; status_bar; }
 }
 
 create_file(){
-  status_bar "Create file: "; read -r
-  
+  status_bar 'Create file: '
+
   if [[ $REPLY =~ /$ ]]; then
     mkdir "$REPLY" 2>/dev/null; get_files
   elif [[ $REPLY ]]; then
@@ -121,23 +127,23 @@ create_file(){
 }
 
 copy_selected(){
-  status_bar "Copy $selected to: "; read -r
+  status_bar "Copy $selected to: "
 
   reply_path&& cp -r "$selectedPath" "$REPLY"&&
     { get_files; status_bar "${selected^} copied to $REPLY"; }
 }
 
 move_selected(){
-  status_bar "Move $selected to: "; read -r
-  
+  status_bar "Move $selected to: "
+
   reply_path&& mv "$selectedPath" "$REPLY"&&
     { get_files; status_bar "${selected^} moved to $REPLY"; }
 }
 
 delete_selected(){
-  status_bar "Delete $selectedPath? [y/N]: "; read -r
-  [[ ${REPLY,,} =~ ^y(es)?$ ]]||{ get_files; return; }
-  
+  status_bar "Delete $selectedPath? [y/N]: "
+  [[ ${REPLY,,} =~ ^(~)?y(es)?$ ]]||{ get_files; return; }
+
   rm -r "$selectedPath"&&{ get_files; status_bar "$selectedPath deleted"; }
 }
 
@@ -159,7 +165,7 @@ file_selected(){
   elif [[ -f "$selected" ]]; then
     printf '\e[?1049l\e[2J\e[999H'
     file_read "$selected"; status_bar
-    
+
     selected_keymap
   fi
 
@@ -196,7 +202,7 @@ main_keymap(){
     N) create_file;;
     C) [[ $selected ]]&& copy_selected;;
     M) [[ $selected ]]&& move_selected;;
-    X) [[ $selected ]]&& delete_selected;;
+    X|\[3) [[ $selected ]]&& delete_selected;;
     \[H) cd ~/; get_files;;
     \[5) page_up;;
     \[6) cursor=1;;
