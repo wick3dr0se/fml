@@ -11,62 +11,15 @@ read_keys(){
   KEY="${REPLY^^}"
 }
 
+reply_path(){
+  [[ $REPLY ]]||{ get_files; return; }
+  [[ $REPLY =~ ^~ ]]&& REPLY="/home/${USER:-$(id -un)}/${REPLY#~\/}"
+  [[ -d $REPLY ]]&& :
+}
+
 status_bar(){
   printf '\e[999H\e[2K\e[41;1;30mFML\e[m %s' \
     "${1:-${selected:-$PWD} ${selected:+$PWD}}"
-}
-
-infinite_scroll(){
-  if (( ${#filesB[@]} > rows )); then
-    if (( cursor < LINES-${#files[@]} )); then
-      cursor="$rows"
-    elif (( cursor > rows )); then
-      cursor=1
-      files=("${filesB[@]:0:${#files[@]}+$rows}")
-      draw_files
-    elif (( cursor < 1 )); then
-      cursor="$rows"
-      files=("${files[@]:0:${#files[@]}-$rows}")
-      draw_files
-    fi
-  else
-    if (( cursor > rows )); then
-      ((cursor=LINES-${#files[@]}))
-    elif (( cursor < LINES-${#files[@]} )); then
-      cursor="$rows"
-    fi
-  fi
-
-  printf '\e[%dH' "$cursor"
-}
-
-hover_file(){
-  hover="${files[cursor-LINES]:-}"
-  hist+=("${cursor}H\e[3${hover}")
-  (( ${i:=0} ))&&{
-    printf '\e[%b\e[m' "${hist[0]}"
-    hist=("${hist[@]:1}")
-  }|| i=1
-
-  printf '\e[%dH\e[1;7;9%b' "$cursor" "$hover"
-}
-
-hidden_toggle(){
-  if shopt -p dotglob; then
-    shopt -u dotglob
-  else
-    shopt -s dotglob
-  fi
-
-  get_files; status_bar
-}
-
-page_up(){
-  if (( ${#files[@]} > rows )); then
-    cursor=1
-  else
-    ((cursor=LINES-${#files[@]}))
-  fi
 }
 
 get_files(){
@@ -99,6 +52,41 @@ draw_files(){
   status_bar
 }
 
+hover_file(){
+  hover="${files[cursor-LINES]:-}"
+  hist+=("${cursor}H\e[3${hover}")
+  (( ${i:=0} ))&&{
+    printf '\e[%b\e[m' "${hist[0]}"
+    hist=("${hist[@]:1}")
+  }|| i=1
+
+  printf '\e[%dH\e[1;7;9%b' "$cursor" "$hover"
+}
+
+infinite_scroll(){
+  if (( ${#filesB[@]} > rows )); then
+    if (( cursor < LINES-${#files[@]} )); then
+      cursor="$rows"
+    elif (( cursor > rows )); then
+      cursor=1
+      files=("${filesB[@]:0:${#files[@]}+$rows}")
+      draw_files
+    elif (( cursor < 1 )); then
+      cursor="$rows"
+      files=("${files[@]:0:${#files[@]}-$rows}")
+      draw_files
+    fi
+  else
+    if (( cursor > rows )); then
+      ((cursor=LINES-${#files[@]}))
+    elif (( cursor < LINES-${#files[@]} )); then
+      cursor="$rows"
+    fi
+  fi
+
+  printf '\e[%dH' "$cursor"
+}
+
 file_selected(){
   selected="${hover#[0-9]m}" selected="${selected%\\e*}"
   [[ $selected == '[empty]' ]]&& unset selected
@@ -116,22 +104,36 @@ file_selected(){
   status_bar
 }
 
+file_read(){ mapfile -tn 250 <"$1"; printf '%s\n' "${MAPFILE[@]}"; }
+
+hidden_toggle(){
+  if shopt -p dotglob; then
+    shopt -u dotglob; else shopt -s dotglob
+  fi
+
+  get_files; status_bar
+}
+
+page_up(){
+  if (( ${#files[@]} > rows )); then
+    cursor=1
+  else
+    ((cursor=LINES-${#files[@]}))
+  fi
+}
+
 copy_selected(){
   status_bar "Copy $selected to: "; read -r
 
-  [[ $REPLY ]]||{ get_files; return; }
-  [[ -e $REPLY ]]&&{
-    cp -r "$selectedPath" "$REPLY"&&{ get_files; status_bar "$selected copied to $REPLY"; }
-  }
+  reply_path&& cp -r "$selectedPath" "$REPLY"&&
+    { get_files; status_bar "${selected^} copied to $REPLY"; }
 }
 
 move_selected(){
   status_bar "Move $selected to: "; read -r
   
-  [[ $REPLY ]]||{ get_files; return; }
-  [[ -e $REPLY ]]&&{
-    mv "$selectedPath" "$REPLY"&&{ get_files; status_bar "$selected moved to $REPLY"; }
-  }
+  reply_path&& mv "$selectedPath" "$REPLY"&&
+    { get_files; status_bar "${selected^} moved to $REPLY"; }
 }
 
 delete_selected(){
@@ -139,11 +141,6 @@ delete_selected(){
   [[ ${REPLY,,} =~ ^y(es)?$ ]]||{ get_files; return; }
   
   rm -r "$selectedPath"&&{ get_files; status_bar "$selectedPath deleted"; }
-}
-
-file_read(){
-  mapfile -tn 250 <"$1"
-  printf '%s\n' "${MAPFILE[@]}"
 }
 
 file_keymap(){
