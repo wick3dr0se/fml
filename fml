@@ -87,23 +87,6 @@ infinite_scroll(){
   printf '\e[%dH' "$cursor"
 }
 
-file_selected(){
-  selected="${hover#[0-9]m}" selected="${selected%\\e*}"
-  [[ $selected == '[empty]' ]]&& unset selected
-  selectedPath="${PWD%/$selected}/$selected"
-
-  if [[ -d "$selected" ]]; then
-    cd "$selected" 2>/dev/null&&{ cursor="$rows"; get_files; }
-  elif [[ -f "$selected" ]]; then
-    printf '\e[?1049l\e[2J\e[999H'
-    file_read "$selected"; status_bar
-    
-    file_keymap
-  fi
-
-  status_bar
-}
-
 file_read(){ mapfile -tn 250 <"$1"; printf '%s\n' "${MAPFILE[@]}"; }
 
 hidden_toggle(){
@@ -118,6 +101,11 @@ change_directory(){
   status_bar "Change directory to: "; read -r
   
   reply_path&&{ cd "$REPLY"; get_files; }
+}
+
+execute_command(){
+  status_bar "Execute: "; read -r
+  [[ $REPLY ]]&&{ printf '\e[2J'; bash -c "$REPLY"; status_bar; }
 }
 
 create_file(){
@@ -161,7 +149,34 @@ page_up(){
   fi
 }
 
-file_keymap(){
+file_selected(){
+  selected="${hover#[0-9]m}" selected="${selected%\\e*}"
+  [[ $selected == '[empty]' ]]&& unset selected
+  selectedPath="${PWD%/$selected}/$selected"
+
+  if [[ -d "$selected" ]]; then
+    cd "$selected" 2>/dev/null&&{ cursor="$rows"; get_files; }
+  elif [[ -f "$selected" ]]; then
+    printf '\e[?1049l\e[2J\e[999H'
+    file_read "$selected"; status_bar
+    
+    selected_keymap
+  fi
+
+  status_bar
+}
+
+execute_keymap(){
+  for((;;)){
+    read_keys
+    case $KEY in
+      :) execute_command;;
+      \[D) get_files; break;;
+    esac
+  }
+}
+
+selected_keymap(){
   for((;;)){
     read_keys
     case $KEY in
@@ -177,6 +192,7 @@ main_keymap(){
     Q) printf '\e[?1049l\e[?25h\e[?7h'; exit;;
     .) hidden_toggle;;
     /) change_directory;;
+    :) execute_command; execute_keymap;;
     N) create_file;;
     C) [[ $selected ]]&& copy_selected;;
     M) [[ $selected ]]&& move_selected;;
