@@ -120,11 +120,15 @@ change_directory(){
   reply_path&&{ cd "$REPLY"; get_files; }
 }
 
-page_up(){
-  if (( ${#files[@]} > rows )); then
-    cursor=1
+create_file(){
+  status_bar "Create file: "; read -r
+  
+  if [[ $REPLY =~ /$ ]]; then
+    mkdir "$REPLY" 2>/dev/null; get_files
+  elif [[ $REPLY ]]; then
+    >"$REPLY"; get_files
   else
-    ((cursor=LINES-${#files[@]}))
+    get_files
   fi
 }
 
@@ -149,6 +153,14 @@ delete_selected(){
   rm -r "$selectedPath"&&{ get_files; status_bar "$selectedPath deleted"; }
 }
 
+page_up(){
+  if (( ${#files[@]} > rows )); then
+    cursor=1
+  else
+    ((cursor=LINES-${#files[@]}))
+  fi
+}
+
 file_keymap(){
   for((;;)){
     read_keys
@@ -165,12 +177,13 @@ main_keymap(){
     Q) printf '\e[?1049l\e[?25h\e[?7h'; exit;;
     .) hidden_toggle;;
     /) change_directory;;
-    \[H) cd ~/; get_files;;
-    \[5) page_up;;
-    \[6) cursor=1;;
+    N) create_file;;
     C) [[ $selected ]]&& copy_selected;;
     M) [[ $selected ]]&& move_selected;;
     X) [[ $selected ]]&& delete_selected;;
+    \[H) cd ~/; get_files;;
+    \[5) page_up;;
+    \[6) cursor=1;;
     A|H|\[D) cursor="$rows"; cd ../; get_files; status_bar;;
     -|S|J|\[B) ((cursor++));;
     +|W|K|\[A) ((cursor--));;
