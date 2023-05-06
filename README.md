@@ -32,7 +32,7 @@ Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 `N`   ...   Create file or directory/  
 `C`   ...   Copy file  
 `M`   ...   Move file  
-`X`   ...   Delete file  
+`Delete`, `X`   ...   Delete file  
 `Q`   ...   Quit
 
 ### Movements
