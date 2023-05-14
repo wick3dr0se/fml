@@ -21,11 +21,9 @@ reply_path(){
 
 status_bar(){
   if [[ $1 ]]; then
-    printf '\e[999H\e[2K\e[?25h\e[41;1;30mFML\e[m '
-    read -rep "$1"&&{ printf '\e[?25l'; get_files; }
+    printf '\e[999H\e[2K\e[41;1;30mFML\e[m %s' "${1-$PWD} ${1+$PWD}"
   else
-    printf '\e[999H\e[2K\e[41;1;30mFML\e[m %s' \
-      "${selected:-$PWD} ${selected:+$PWD}"
+    printf '\e[999H\e[2K\e[41;1;30mFML\e[m'
   fi
 }
 
@@ -56,7 +54,7 @@ draw_files(){
   printf '\e[2J\e[999H'
   printf '\e[3%b\n' "${files[@]}"
 
-  status_bar
+  status_bar "$selected"
 }
 
 hover_file(){
@@ -101,50 +99,51 @@ hidden_toggle(){
     shopt -u dotglob; else shopt -s dotglob
   fi
 
-  get_files; status_bar
+  get_files; status_bar "$selected"
 }
 
 change_directory(){
-  statuS_bar 'Change directory to: '
+  status_bar; read -rep ' Change directory to: '
   reply_path&&{ cd "$REPLY"; get_files; }
 }
 
 execute_command(){
-  status_bar 'Execute: '
+  status_bar; read -rep 'Execute: '
   [[ $REPLY ]]&&{ printf '\e[2J\e[999H'; bash -c "$REPLY"; status_bar; }
 }
 
 create_file(){
-  status_bar 'Create file: '
+  status_bar; read -rep ' Create file: '
 
   if [[ $REPLY =~ /$ ]]; then
-    mkdir "$REPLY" 2>/dev/null; get_files
+    mkdir "$REPLY" 2>/dev/null
   elif [[ $REPLY ]]; then
-    >"$REPLY"; get_files
-  else
-    get_files
+    >"$REPLY"
   fi
+
+  get_files
 }
 
 copy_selected(){
-  status_bar "Copy $selected to: "
+  status_bar; read -rep " Copy $selected to: "
 
   reply_path&& cp -r "$selectedPath" "$REPLY"&&
-    { get_files; status_bar "${selected^} copied to $REPLY"; }
+    { get_files; status_bar; printf '%s' "${selected^} copied to $REPLY"; }
 }
 
 move_selected(){
-  status_bar "Move $selected to: "
+  status_bar; read -rep " Move $selected to: "
 
   reply_path&& mv "$selectedPath" "$REPLY"&&
-    { get_files; status_bar "${selected^} moved to $REPLY"; }
+    { get_files; status_bar; printf '%s' "${selected^} moved to $REPLY"; }
 }
 
 delete_selected(){
-  status_bar "Delete $selectedPath? [y/N]: "
+  status_bar; read -rep " Delete $selectedPath? [y/N]: "
   [[ ${REPLY,,} =~ ^(~)?y(es)?$ ]]||{ get_files; return; }
 
-  rm -r "$selectedPath"&&{ get_files; status_bar "$selectedPath deleted"; }
+  rm -r "$selectedPath"&&
+    { get_files; status_bar; printf '%s' "$selectedPath deleted"; }
 }
 
 page_up(){
@@ -164,12 +163,12 @@ file_selected(){
     cd "$selected" 2>/dev/null&&{ cursor="$rows"; get_files; }
   elif [[ -f "$selected" ]]; then
     printf '\e[?1049l\e[2J\e[999H'
-    file_read "$selected"; status_bar
+    file_read "$selected"; status_bar "$selected"
 
     selected_keymap
   fi
 
-  status_bar
+  status_bar "$selected"
 }
 
 execute_keymap(){
@@ -186,7 +185,7 @@ selected_keymap(){
   for((;;)){
     read_keys
     case $KEY in
-      H|\[D) printf '\e[?1049h\e[?25l\e[?7l'; get_files; status_bar; break;;
+      H|\[D) printf '\e[?1049h\e[?25l\e[?7l'; get_files; status_bar "$selected"; break;;
       L|\[C) "${EDITOR:-${VISUAL:-vim}}" "$selected"
     esac
   }
@@ -206,7 +205,7 @@ main_keymap(){
     \[H) cd ~/; get_files;;
     \[5) page_up;;
     \[6) cursor=1;;
-    A|H|\[D) cursor="$rows"; cd ../; get_files; status_bar;;
+    A|H|\[D) cursor="$rows"; cd ../; get_files; status_bar "$selected";;
     -|S|J|\[B) ((cursor++));;
     +|W|K|\[A) ((cursor--));;
     D|L|\[C) file_selected;;
@@ -214,8 +213,8 @@ main_keymap(){
 }
 
 trap 'printf "\e[?1049l\e[?25h\e[?7h"; exit' INT
-trap 'term_init; get_files; status_bar' WINCH
+trap 'term_init; get_files; status_bar "$selected"' WINCH
 
 term_init; cursor="$rows"
-get_files; hover_file; status_bar
+get_files; hover_file; status_bar "$0"
 for((;;)){ main_keymap; infinite_scroll; hover_file; }
