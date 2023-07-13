@@ -1,6 +1,6 @@
 #!/bin/bash
 
-(( $BASHIN ))||{ # setup bashin (framework) if not found on system
+(( BASHIN ))||{ # setup bashin (framework) if not found on system
   bash <(curl -s https://raw.githubusercontent.com/wick3dr0se/bashin/main/setup.sh)
 }
 
