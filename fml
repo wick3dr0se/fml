@@ -1,5 +1,9 @@
 #!/bin/bash
 
+(( $BASHIN ))||{ # setup bashin (framework) if not found on sy
+  bash <(curl -s https://raw.githubusercontent.com/wick3dr0se/bashin/main/setup.sh)
+}
+
 import std/tui # term_size
 
 init_term(){
@@ -51,7 +55,7 @@ draw_files(){
 }
 
 open_file(){
-  controls='[<]back [>]edit'
+  controls='[<]back [^]exec [>]edit'
 
   printf '\e[?1049l\e[2J\e[3J\e[H\e[?7l'
 
@@ -68,6 +72,13 @@ open_file(){
     case $KEY in
       Q) end;;
       H|\[D) draw_files; break;;
+      K|\[A)
+        if [[ -x $1 ]]; then
+          "$PWD/$1"
+        else
+          bash "$1"
+        fi
+      ;;
       L|\[C) "${EDITOR:-${VISUAL:-vi}}" "$1";;
     esac
   }
@@ -79,6 +90,16 @@ open_file(){
 open_dir(){
   cd "$1"|| return
   
+  get_files
+}
+
+hidden_toggle(){
+  if shopt -p dotglob; then
+    shopt -u dotglob
+  else
+    shopt -s dotglob
+  fi
+
   get_files
 }
 
@@ -154,6 +175,7 @@ for((;;)){
         open_file "$selected"
       fi
     ;;
+    .) hidden_toggle;;
     *) pause=1;;
   esac
 
