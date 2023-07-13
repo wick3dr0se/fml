@@ -1,220 +1,161 @@
 #!/bin/bash
 
-set -o vi
+import std/tui # term_size
 
-term_init(){
-  shopt -s checkwinsize; (:;:)
-  printf '\e[?1049h\e[2J\e[?25l\e[?7l\e[999H'
-  ((rows=LINES-1))
+init_term(){
+  term_size
+  ((ROWS=LINES-2)); ((SPOS=ROWS+1))
+
+  printf '\e[?1049h\e[?25l\e[?7l'
+}
+
+end(){
+  printf '\e[?1049l\e[?25h\e[?7h'
+  exit
 }
 
 read_keys(){
-  read -rsn1; [[ $REPLY == $'\e' ]]&& read -rsn2
+  read -rsn1
+  [[ $REPLY == $'\e' ]]&& read -rsn2
   KEY="${REPLY^^}"
 }
 
-reply_path(){
-  [[ $REPLY ]]||{ get_files; return; }
-  [[ $REPLY =~ ^~ ]]&& REPLY="/home/${USER:-$(id -un)}/${REPLY#~\/}"
-  [[ -d $REPLY ]]&& :
-}
-
-status_bar(){
-  if [[ $1 ]]; then
-    printf '\e[999H\e[2K\e[41;1;30mFML\e[m %s' "${1-$PWD} ${1+$PWD}"
-  else
-    printf '\e[999H\e[2K\e[41;1;30mFML\e[m'
-  fi
-}
-
 get_files(){
-  unset files
+  unset STACK
 
   for _ in *; do
-    if [[ $_ == '*' ]]; then
-      files=('9m[empty]\e[m')
-    elif [[ -h $_ ]]; then
-      files+=("3m$_\e[m@")
+    if [[ -h $_ ]]; then
+      push "\e[36m$_\e[m@"
     elif [[ -d $_ ]]; then
-      files+=("4m$_\e[m/")
-    elif [[ -x $_|| $_ == *'.sh' ]]; then
-      files+=("2m$_\e[m*")
+      push "\e[34m$_\e[m/"
+    elif [[ -x $_ ]]; then
+      push "\e[32m$_\e[m*"
     else
-      files+=("9m$_\e[m")
+      push "\e[39m$_\e[m"
     fi
   done
 
-  filesB=("${files[@]}")
   draw_files
 }
 
 draw_files(){
-  unset i hist
+  cursor="${1:-$ROWS}"
 
-  printf '\e[2J\e[999H'
-  printf '\e[3%b\n' "${files[@]}"
+  unset SKIP hoverHist
 
-  status_bar "$selected"
+  printf '\e[2J'
+
+  for _ in "${!STACK[@]}"; do
+    (( _ < ROWS ))&& printf '\e[%dH\e[2m%b' "$((ROWS-_))" "${STACK[$_]}"
+  done
 }
 
-hover_file(){
-  hover="${files[cursor-LINES]:-}"
-  hist+=("${cursor}H\e[3${hover}")
-  (( ${i:=0} ))&&{
-    printf '\e[%b\e[m' "${hist[0]}"
-    hist=("${hist[@]:1}")
-  }|| i=1
+open_file(){
+  controls='[<]back [>]edit'
 
-  printf '\e[%dH\e[1;7;9%b' "$cursor" "$hover"
+  printf '\e[?1049l\e[2J\e[3J\e[H\e[?7l'
+
+  mapfile -tn 1000 <"$1"
+  printf '%s\n' "${MAPFILE[@]}"
+
+  printf '\e[S'
+
+  hud
+  unset controls
+
+  for((;;)){
+    read_keys
+    case $KEY in
+      Q) end;;
+      H|\[D) draw_files; break;;
+      L|\[C) "${EDITOR:-${VISUAL:-vi}}" "$1";;
+    esac
+  }
+
+  printf '\e[2J\e[3J\e[?1049h\e[?25l'
+  draw_files
 }
 
-infinite_scroll(){
-  if (( ${#filesB[@]} > rows )); then
-    if (( cursor < LINES-${#files[@]} )); then
-      cursor="$rows"
-    elif (( cursor > rows )); then
-      cursor=1
-      files=("${filesB[@]:0:${#files[@]}+$rows}")
-      draw_files
-    elif (( cursor < 1 )); then
-      cursor="$rows"
-      files=("${files[@]:0:${#files[@]}-$rows}")
-      draw_files
-    fi
-  else
-    if (( cursor > rows )); then
-      ((cursor=LINES-${#files[@]}))
-    elif (( cursor < LINES-${#files[@]} )); then
-      cursor="$rows"
-    fi
-  fi
-
-  printf '\e[%dH' "$cursor"
-}
-
-file_read(){ mapfile -tn 250 <"$1"; printf '%s\n' "${MAPFILE[@]}"; }
-
-hidden_toggle(){
-  if shopt -p dotglob; then
-    shopt -u dotglob; else shopt -s dotglob
-  fi
-
-  get_files; status_bar "$selected"
-}
-
-change_directory(){
-  status_bar; read -rep ' Change directory to: '
-  reply_path&&{ cd "$REPLY"; get_files; }
-}
-
-execute_command(){
-  status_bar; read -rep 'Execute: '
-  [[ $REPLY ]]&&{ printf '\e[2J\e[999H'; bash -c "$REPLY"; status_bar; }
-}
-
-create_file(){
-  status_bar; read -rep ' Create file: '
-
-  if [[ $REPLY =~ /$ ]]; then
-    mkdir "$REPLY" 2>/dev/null
-  elif [[ $REPLY ]]; then
-    >"$REPLY"
-  fi
-
+open_dir(){
+  cd "$1"|| return
+  
   get_files
 }
 
-copy_selected(){
-  status_bar; read -rep " Copy $selected to: "
+hover(){
+  (( pause ))||{
+    HOVER="${STACK[$ROWS-$1]}"
+    printf '\e[%dH\e[7m%b' "$1" "$HOVER"
 
-  reply_path&& cp -r "$selectedPath" "$REPLY"&&
-    { get_files; status_bar; printf '%s' "${selected^} copied to $REPLY"; }
+    hoverHist+=("\e[${1}H$HOVER")
+    skip&&{
+      printf '%b' "${hoverHist[0]}"
+      hoverHist=("${hoverHist[@]:1}")
+    }
+  }; pause=0
 }
 
-move_selected(){
-  status_bar; read -rep " Move $selected to: "
-
-  reply_path&& mv "$selectedPath" "$REPLY"&&
-    { get_files; status_bar; printf '%s' "${selected^} moved to $REPLY"; }
-}
-
-delete_selected(){
-  status_bar; read -rep " Delete $selectedPath? [y/N]: "
-  [[ ${REPLY,,} =~ ^(~)?y(es)?$ ]]||{ get_files; return; }
-
-  rm -r "$selectedPath"&&
-    { get_files; status_bar; printf '%s' "$selectedPath deleted"; }
-}
-
-page_up(){
-  if (( ${#files[@]} > rows )); then
-    cursor=1
+scrollback(){
+  if (( ${#STACK[@]} > ROWS )); then
+    if (( cursor > ROWS )); then
+      cycle "-$ROWS"
+      draw_files 1
+    elif (( cursor < 1 )); then
+      cycle "$ROWS"
+      draw_files
+    fi
   else
-    ((cursor=LINES-${#files[@]}))
+    if (( cursor > ROWS )); then
+      ((cursor=SPOS-${#STACK[@]}))
+    elif (( cursor < SPOS-${#STACK[@]} )); then
+      cursor="$ROWS"
+    fi
   fi
 }
 
-file_selected(){
-  selected="${hover#[0-9]m}" selected="${selected%\\e*}"
-  [[ $selected == '[empty]' ]]&& unset selected
-  selectedPath="${PWD%/$selected}/$selected"
-
-  if [[ -d "$selected" ]]; then
-    cd "$selected" 2>/dev/null&&{ cursor="$rows"; get_files; }
-  elif [[ -f "$selected" ]]; then
-    printf '\e[?1049l\e[2J\e[999H'
-    file_read "$selected"; status_bar "$selected"
-
-    selected_keymap
-  fi
-
-  status_bar "$selected"
+hud(){
+  printf '\e[%dH\e[2K\e[44mFML\e[m %b %b\e[%dH%s %s' \
+    "$SPOS" "$HOVER" "${stats-}" \
+    "$LINES" "${controls:=[<]back [>]open}" "$TWD"
 }
 
-execute_keymap(){
-  for((;;)){
-    read_keys
-    case $KEY in
-      :) execute_command;;
-      \[D) get_files; break;;
-    esac
-  }
-}
+init_term
+get_files
+for((;;)){
+  TWD="${PWD#/data/data/com.termux}"
+  [[ $TWD == '' ]]&& TWD='/'
 
-selected_keymap(){
-  for((;;)){
-    read_keys
-    case $KEY in
-      H|\[D) printf '\e[?1049h\e[?25l\e[?7l'; get_files; status_bar "$selected"; break;;
-      L|\[C) "${EDITOR:-${VISUAL:-vim}}" "$selected"
-    esac
-  }
-}
+  hover "$cursor"
 
-main_keymap(){
+  hud
+
   read_keys
   case $KEY in
-    Q) printf '\e[?1049l\e[?25h\e[?7h'; exit;;
-    .) hidden_toggle;;
-    /) change_directory;;
-    :) execute_command; execute_keymap;;
-    N) create_file;;
-    C) [[ $selected ]]&& copy_selected;;
-    M) [[ $selected ]]&& move_selected;;
-    X|\[3) [[ $selected ]]&& delete_selected;;
-    \[H) cd ~/; get_files;;
-    \[5) page_up;;
-    \[6) cursor=1;;
-    A|H|\[D) cursor="$rows"; cd ../; get_files; status_bar "$selected";;
-    -|S|J|\[B) ((cursor++));;
-    +|W|K|\[A) ((cursor--));;
-    D|L|\[C) file_selected;;
+    Q) end;;
+    H|\[D)
+      if [[ $TWD == '/' ]]; then
+        pause=1
+      else
+        cd ../
+        get_files
+      fi
+    ;;
+    J|\[B) ((cursor++));;
+    K|\[A) ((cursor--));;
+    L|\[C)
+      : "${HOVER#\\e[3?m}"
+      selected="${_%\\e*}"
+
+      stats="\e[33mMarked\e[m: ${TWD%/}/$HOVER"
+      
+      if [[ -d $selected ]]; then
+        open_dir "$selected"
+      elif [[ -f $selected ]]; then
+        open_file "$selected"
+      fi
+    ;;
+    *) pause=1;;
   esac
+
+  scrollback
 }
-
-trap 'printf "\e[?1049l\e[?25h\e[?7h"; exit' INT
-trap 'term_init; get_files; status_bar "$selected"' WINCH
-
-term_init; cursor="$rows"
-get_files; hover_file; status_bar "$0"
-for((;;)){ main_keymap; infinite_scroll; hover_file; }
