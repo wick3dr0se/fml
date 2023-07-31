@@ -1,14 +1,8 @@
 #!/bin/bash
 
-(( BASHIN ))||{ # setup bashin (framework) if not found on system
-  bash <(curl -s https://raw.githubusercontent.com/wick3dr0se/bashin/main/setup.sh)
-}
-
-import std/tui # term_size
-
 init_term(){
-  term_size
-  ((ROWS=LINES-2)); ((SPOS=ROWS+1))
+  shopt -s checkwinsize; (:;:)
+  ((ROWS=LINES-2))
 
   printf '\e[?1049h\e[?25l\e[?7l'
 }
@@ -18,158 +12,138 @@ end(){
   exit
 }
 
+push(){ STACK=("$@" "${STACK[@]}"); }
+
 read_keys(){
-  read -rsn1
-  [[ $REPLY == $'\e' ]]&& read -rsn2
-  KEY="${REPLY^^}"
+  read -rsn 1
+  [[ $REPLY == $'\e' ]]&& read -rsn 2
+  KEY="${REPLY,,}"
 }
 
 get_files(){
   unset STACK
 
+  CURSOR="$ROWS"
+
   for _ in *; do
-    if [[ -h $_ ]]; then
-      push "\e[36m$_\e[m@"
-    elif [[ -d $_ ]]; then
-      push "\e[34m$_\e[m/"
-    elif [[ -x $_ ]]; then
-      push "\e[32m$_\e[m*"
-    else
-      push "\e[39m$_\e[m"
-    fi
+    if [[ -h $_ ]]; then push "\e[36m$_\e[m@"
+    elif [[ -d $_ ]]; then push "\e[34m$_\e[m/"
+    elif [[ -x $_|| $_ =~ \.(ba)?sh ]]; then push "\e[32m$_\e[m*"
+    else push "\e[39m$_\e[m"; fi
   done
 
   draw_files
 }
 
 draw_files(){
-  cursor="${1:-$ROWS}"
+  unset hoverHist i
 
-  unset SKIP N hoverHist
-
-  printf '\e[2J'
-
-  for _ in "${!STACK[@]}"; do
-    (( _ < ROWS ))&& printf '\e[%dH\e[2m%b' "$((ROWS-_))" "${STACK[$_]}"
-  done
+  printf '\e[2J\e[%dH' "$ROWS"
+  printf '\e[2m%b\n' "${STACK[@]}"
+  echo
 }
 
+draw_bar(){
+  printf '\e[%dH\e[2K%s %b%s\e[A\r\e[30;2;45mFML\e[m %b' \
+    "$LINES" "${controls:-[<]back [>]open}" "$HOVER" "$status" "$rawSelected"
+}
+
+hover_files(){
+  HOVER="${STACK[$1-(ROWS+1)]}"
+  printf '\e[%dH\e[7m%b' "$1" "$HOVER"
+
+  (( ${#STACK[@]}-1 ))&&{
+    hoverHist+=("\e[${1}H$HOVER")
+    if (( i )); then
+      printf '%b' "${hoverHist[0]}"
+      hoverHist=("${hoverHist[@]:1}")
+    else
+      i=1
+    fi
+  }
+}
+
+scroll_buffer(){
+  if (( ${#STACK[@]} > $1 )); then
+    if (( CURSOR > $1 )); then
+      CURSOR=1
+      local popped=("${STACK[@]:0:$1}")
+      STACK=("${STACK[@]:$1}" "${popped[@]}")
+
+      draw_files
+    elif (( CURSOR < 1 )); then
+      CURSOR="$1"
+      local popped=("${STACK[@]:(-$1)}")
+      STACK=("${popped[@]}" "${STACK[@]::${#STACK[@]}-$1}")
+
+      draw_files
+    fi
+  else
+    if (( CURSOR > $1 )); then
+      ((CURSOR=$1-(${#STACK[@]}-1)))
+    elif (( CURSOR < $1-(${#STACK[@]}-1) )); then
+      CURSOR="$1"
+    fi
+  fi
+}
+
+open_dir(){ cd "$1"; get_files; }
+
 open_file(){
-  controls='[<]back [^]exec [>]edit'
-
-  printf '\e[?1049l\e[2J\e[3J\e[H\e[?7l'
-
+  grep -qI . "$1"||{ PAUSE=1; return; }
   mapfile -tn 1000 <"$1"
+
+  printf '\e[?1049l\e[2J\e[3J\e[?7l\e[H'
   printf '%s\n' "${MAPFILE[@]}"
+  echo
 
-  printf '\e[S'
+  status=": ${#MAPFILE[@]} lines"
 
-  hud
-  unset controls
+  draw_bar
 
   for((;;)){
     read_keys
     case $KEY in
-      Q) end;;
-      H|\[D) draw_files; break;;
-      K|\[A)
-        if [[ -x $1 ]]; then
-          "$PWD/$1"
-        else
-          bash "$1"
-        fi
-      ;;
-      L|\[C) "${EDITOR:-${VISUAL:-vi}}" "$1";;
+      q) end;;
+      h|\[d) break;;
+      l|\[c) "${EDITOR:-${VISUAL:-vim}}" "$1"; printf '\e[?25l';;
     esac
   }
 
-  printf '\e[2J\e[3J\e[?1049h\e[?25l'
+  unset status
+
+  printf '\e[2J\e[?1049h'
   draw_files
 }
 
-open_dir(){
-  cd "$1"|| return
-  
-  get_files
+open_selected(){
+  rawSelected="$PWD/$HOVER"
+  : "${HOVER#\\e[3?m}"; selected="${_%\\e*}"
+
+  if [[ -d $selected ]]; then open_dir "$selected"
+  elif [[ -f $selected ]]; then open_file "$selected"; fi
 }
 
-hidden_toggle(){
-  if shopt -p dotglob; then
-    shopt -u dotglob
-  else
-    shopt -s dotglob
-  fi
-
-  get_files
-}
-
-hover(){
-  (( pause ))||{
-    HOVER="${STACK[$ROWS-$1]}"
-    printf '\e[%dH\e[7m%b' "$1" "$HOVER"
-
-    (( ${#STACK[@]} > 1 ))&&{
-      hoverHist+=("\e[${1}H$HOVER")
-      skip&&{
-        printf '%b' "${hoverHist[0]}"
-        hoverHist=("${hoverHist[@]:1}")
-      }
-    }
-  }; pause=0
-}
-
-scrollback(){
-  if (( ${#STACK[@]} > ROWS )); then
-    if (( cursor > ROWS )); then
-      cycle "-$ROWS"
-      draw_files 1
-    elif (( cursor < 1 )); then
-      cycle "$ROWS"
-      draw_files
-    fi
-  else
-    if (( cursor > ROWS )); then
-      ((cursor=SPOS-${#STACK[@]}))
-    elif (( cursor < SPOS-${#STACK[@]} )); then
-      cursor="$ROWS"
-    fi
-  fi
-}
-
-hud(){
-  printf '\e[%dH\e[2K\e[44mFML\e[m %b %b\e[%dH%s %s' \
-    "$SPOS" "$HOVER" "${stats-}" \
-    "$LINES" "${controls:=[<]back [>]open}" "$PWD"
-}
+trap 'init_term; get_files' WINCH
+trap end INT EXIT
 
 init_term
 get_files
 for((;;)){
-  hover "$cursor"
-
-  hud
+  (( PAUSE ))||{
+    hover_files "$CURSOR"
+    draw_bar
+  }; PAUSE=0
 
   read_keys
   case $KEY in
-    Q) end;;
-    H|\[D) cd ../; get_files;;
-    J|\[B) ((cursor++));;
-    K|\[A) ((cursor--));;
-    L|\[C)
-      : "${HOVER#\\e[3?m}"
-      selected="${_%\\e*}"
-
-      stats="\e[33mMarked\e[m: $PWD/$HOVER"
-      
-      if [[ -d $selected ]]; then
-        open_dir "$selected"
-      elif [[ -f $selected ]]; then
-        open_file "$selected"
-      fi
-    ;;
-    .) hidden_toggle;;
-    *) pause=1;;
+    q) end;;
+    h|\[d) cd ../; get_files;;
+    j|\[b) ((CURSOR++));;
+    k|\[a) ((CURSOR--));;
+    l|\[c) open_selected;;
+    *) PAUSE=1;;
   esac
 
-  scrollback
+  scroll_buffer "$ROWS"
 }
