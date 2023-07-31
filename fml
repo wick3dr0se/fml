@@ -31,6 +31,8 @@ get_files(){
     elif [[ -x $_|| $_ =~ \.(ba)?sh ]]; then push "\e[32m$_\e[m*"
     else push "\e[39m$_\e[m"; fi
   done
+  
+  (( NO_COLOR ))&&{ STACK=("${STACK[@]/#\\e[3?m/\\e[39m}") NO_COLOR='FML'; }
 
   draw_files
 }
@@ -44,8 +46,9 @@ draw_files(){
 }
 
 draw_bar(){
-  printf '\e[%dH\e[2K%s %b%s\e[A\r\e[30;2;45mFML\e[m %b' \
-    "$LINES" "${controls:-[<]back [>]open}" "$HOVER" "$status" "$rawSelected"
+  printf '\e[%dH\e[2K%s %b%s\e[A\r%b\e[m %b' \
+    "$LINES" "${controls:-[<]back [>]open}" "$HOVER" "$status" \
+    "${NO_COLOR:-\e[2;30;44;4mFML}" "$rawSelected"
 }
 
 hover_files(){
