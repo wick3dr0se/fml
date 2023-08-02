@@ -21,7 +21,7 @@ read_keys(){
 }
 
 get_files(){
-  unset STACK
+  unset STACK FML
 
   CURSOR="$ROWS"
 
@@ -32,13 +32,13 @@ get_files(){
     else push "\e[39m$_\e[m"; fi
   done
   
-  (( NO_COLOR ))&&{ STACK=("${STACK[@]/#\\e[3?m/\\e[39m}") NO_COLOR='FML'; }
+  (( NO_COLOR ))&&{ STACK=("${STACK[@]/#\\e[3?m/\\e[39m}") FML='FML'; }
 
   draw_files
 }
 
 draw_files(){
-  unset hoverHist i
+  unset hoverHist i controls
 
   printf '\e[2J\e[%dH' "$ROWS"
   printf '\e[2m%b\n' "${STACK[@]}"
@@ -48,7 +48,7 @@ draw_files(){
 draw_bar(){
   printf '\e[%dH\e[2K%s %b%s\e[A\r%b\e[m %b' \
     "$LINES" "${controls:-[<]back [>]open}" "$HOVER" "$status" \
-    "${NO_COLOR:-\e[2;30;44;4mFML}" "$rawSelected"
+    "${FML:-\e[2;30;44;4mFML}" "$rawSelected"
 }
 
 hover_files(){
@@ -100,6 +100,7 @@ open_file(){
   printf '%s\n' "${MAPFILE[@]}"
   echo
 
+  controls='[<]back [>]edit'
   status=": ${#MAPFILE[@]} lines"
 
   draw_bar
@@ -142,8 +143,7 @@ for((;;)){
   case $KEY in
     q) end;;
     h|\[d) cd ../; get_files;;
-    j|\[b) ((CURSOR++));;
-    k|\[a) ((CURSOR--));;
+    j|\[b) ((CURSOR++));; k|\[a) ((CURSOR--));;
     l|\[c) open_selected;;
     *) PAUSE=1;;
   esac
