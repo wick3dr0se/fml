@@ -128,6 +128,11 @@ open_selected(){
   elif [[ -f $selected ]]; then open_file "$selected"; fi
 }
 
+hidden_toggle(){
+  if shopt -p dotglob >/dev/null; then shopt -u dotglob; else shopt -s dotglob; fi
+  get_files
+}
+
 exec_comm(){
   local comm foo="$rawSelected"
   unset rawSelected
@@ -184,6 +189,7 @@ for((;;)){
     h|\[d) cd ../; get_files;;
     j|\[b) ((CURSOR++));; k|\[a) ((CURSOR--));;
     l|\[c) open_selected;;
+    .) hidden_toggle;;
     :) exec_comm;;
     /) change_dir;;
     *) PAUSE=1;;
