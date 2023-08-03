@@ -130,18 +130,18 @@ open_selected(){
 
 exec_comm(){
   local comm foo="$rawSelected"
-  printf '\e[%dH\e[2K\e[?25hExec: ' "$LINES"
+  unset rawSelected
+  controls='[<]back' HOVER="$comm"
 
-  read -r comm
-  [[ $comm ]]&&{
-    unset rawSelected
-    controls='[<]back' HOVER="$comm"
+  printf '\e[%dH\e[2K\e[?25hExec: ' "$LINES"
+  read -re comm
+  [[ $comm ]]|| return
     
-    printf '\e[?1049l\e[2J\e[3J\e[H'
-    bash -c "$comm"
-    printf '\e[?25l\n'
-    draw_bar
-  }
+  printf '\e[?1049l\e[2J\e[3J\e[H'
+  bash -c "$comm"
+  printf '\e[?25l\n'
+  
+  draw_bar
 
   for((;;)){
     read_keys
@@ -155,6 +155,15 @@ exec_comm(){
   rawSelected="$foo"
 
   printf '\e[?1049h\e[?7l'
+  get_files
+}
+
+change_dir(){
+  printf '\e[%dH\e[2K\e[?25hDir: ' "$LINES"
+  read -re
+  [[ $dir ]]|| return
+  
+  eval cd "$dir"
   get_files
 }
 
@@ -176,6 +185,7 @@ for((;;)){
     j|\[b) ((CURSOR++));; k|\[a) ((CURSOR--));;
     l|\[c) open_selected;;
     :) exec_comm;;
+    /) change_dir;;
     *) PAUSE=1;;
   esac
 
