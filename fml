@@ -90,7 +90,7 @@ scroll_buffer(){
   fi
 }
 
-open_dir(){ cd "$1"; get_files; }
+open_dir(){ cd "$1"|| return; get_files; }
 
 open_file(){
   grep -qI . "$1"||{ PAUSE=1; return; }
@@ -175,11 +175,11 @@ make_file(){
   (( ${#file[@]} ))|| return
 
 
-  for _ in ${file[@]}; do
+  for _ in "${file[@]}"; do
     if [[ $_ =~ /$ ]]; then
       mkdir "$_"
     else
-      >"$_"
+      touch "$_"
     fi
   done
 
