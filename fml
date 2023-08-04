@@ -191,7 +191,7 @@ change_dir(){
 
   [[ $dir ]]|| return
   
-  cd "$dir"
+  eval cd "$dir"
   get_files
 }
 
