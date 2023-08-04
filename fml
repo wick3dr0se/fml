@@ -48,7 +48,7 @@ draw_files(){
 draw_bar(){
   printf '\e[%dH\e[2K%s %b%s\e[A\r%b\e[m %b' \
     "$LINES" "${controls:-[<]back [>]open}" "$HOVER" "$status" \
-    "${FML:-\e[2;30;44;4mFML}" "$rawSelected"
+    "${FML:-\e[2;30;44;4mFML}" "$PWD"
 }
 
 hover_files(){
@@ -121,11 +121,10 @@ open_file(){
 }
 
 open_selected(){
-  rawSelected="$PWD/$HOVER"
-  : "${HOVER#\\e[3?m}"; selected="${_%\\e*}"
+  : "${HOVER#\\e[3?m}"; : "${_%\\e*}"
 
-  if [[ -d $selected ]]; then open_dir "$selected"
-  elif [[ -f $selected ]]; then open_file "$selected"; fi
+  if [[ -d $_ ]]; then open_dir "$_"
+  elif [[ -f $_ ]]; then open_file "$_"; fi
 }
 
 hidden_toggle(){
@@ -134,18 +133,17 @@ hidden_toggle(){
 }
 
 exec_comm(){
-  local comm foo="$rawSelected"
-  unset rawSelected
+  local comm
   controls='[<]back' HOVER="$comm"
 
   printf '\e[%dH\e[2K\e[?25hExec comm: ' "$LINES"
-  read -re comm
+  read -rea comm
   printf '\e[?25l'
 
-  [[ $comm ]]|| return
+  (( ${#comm[@]} ))|| return
     
-  printf '\e[?1049l\e[2J\e[3J\e[H'
-  bash -c "$comm"
+  printf '\e[?1049l\e[2J\e[3J\e[H\e[?7l'
+  eval "${comm[@]}"
   printf '\n'
   
   draw_bar
@@ -159,9 +157,7 @@ exec_comm(){
     esac
   }
 
-  rawSelected="$foo"
-
-  printf '\e[?1049h\e[?7l'
+  printf '\e[?1049h'
   get_files
 }
 
@@ -195,7 +191,7 @@ change_dir(){
 
   [[ $dir ]]|| return
   
-  eval cd "$dir"
+  cd "$dir"
   get_files
 }
 
