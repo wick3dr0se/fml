@@ -138,13 +138,15 @@ exec_comm(){
   unset rawSelected
   controls='[<]back' HOVER="$comm"
 
-  printf '\e[%dH\e[2K\e[?25hExec: ' "$LINES"
+  printf '\e[%dH\e[2K\e[?25hExec comm: ' "$LINES"
   read -re comm
+  printf '\e[?25l'
+
   [[ $comm ]]|| return
     
   printf '\e[?1049l\e[2J\e[3J\e[H'
   bash -c "$comm"
-  printf '\e[?25l\n'
+  printf '\n'
   
   draw_bar
 
@@ -163,12 +165,47 @@ exec_comm(){
   get_files
 }
 
+make_file(){
+  local file
+
+  printf '\e[%dH\e[2K\e[?25hMake file: ' "$LINES"
+  read -re file
+  printf '\e[?25l'
+
+  [[ $file ]]|| return
+
+  if [[ $file =~ /$ ]]; then
+    mkdir "$file"
+  else
+    >"$file"
+  fi
+
+  get_files
+}
+
 change_dir(){
-  printf '\e[%dH\e[2K\e[?25hDir: ' "$LINES"
-  read -re
+  local dir
+
+  printf '\e[%dH\e[2K\e[?25hChange dir: ' "$LINES"
+  read -re dir
+  printf '\e[?25l'
+
   [[ $dir ]]|| return
   
   eval cd "$dir"
+  get_files
+}
+
+del_file(){
+  local file
+
+  printf '\e[%dH\e[2K\e[?25hDel file: ' "$LINES"
+  read -re file
+  printf '\e[?25l'
+
+  [[ $file ]]|| return
+
+  rm -fr "$file"
   get_files
 }
 
@@ -191,7 +228,9 @@ for((;;)){
     l|\[c) open_selected;;
     .) hidden_toggle;;
     :) exec_comm;;
+    \>) make_file;;
     /) change_dir;;
+    -) del_file;;
     *) PAUSE=1;;
   esac
 
