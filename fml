@@ -169,16 +169,19 @@ make_file(){
   local file
 
   printf '\e[%dH\e[2K\e[?25hMake file: ' "$LINES"
-  read -re file
+  read -rea file
   printf '\e[?25l'
 
-  [[ $file ]]|| return
+  (( ${#file[@]} ))|| return
 
-  if [[ $file =~ /$ ]]; then
-    mkdir "$file"
-  else
-    >"$file"
-  fi
+
+  for _ in ${file[@]}; do
+    if [[ $_ =~ /$ ]]; then
+      mkdir "$_"
+    else
+      >"$_"
+    fi
+  done
 
   get_files
 }
@@ -200,12 +203,12 @@ del_file(){
   local file
 
   printf '\e[%dH\e[2K\e[?25hDel file: ' "$LINES"
-  read -re file
+  read -rea file
   printf '\e[?25l'
 
-  [[ $file ]]|| return
+  (( ${#file[@]} ))|| return
 
-  rm -fr "$file"
+  rm -fr "${file[@]}"
   get_files
 }
 
