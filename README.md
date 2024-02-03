@@ -29,16 +29,12 @@ Execute `fml` (if installed to path, aliased, ...), otherwise `bash fml`/`./fml`
 `.`   ...   Toggle all (including hidden) files  
 `/`   ...   Change directory  
 `:`   ...   Execute command  
-`N`   ...   Create file or directory/  
-`C`   ...   Copy file  
-`M`   ...   Move file  
-`Delete`, `X`   ...   Delete file  
+`>`   ...   Create file or directory/  
+`-`   ...   Delete file  
 `Q`   ...   Quit
 
 ### Movements
-`←`, `H`, `A`   ...   Back  
-`↓`, `J`, `S`, `-`   ...   Move down  
-`↑`, `K`, `W`, `+`   ...   Move up  
-`→`, `L`, `D`   ...   Open  
-`Home`, `PageUp`   ...   Scroll to top  
-`PageDown`   ...   Scroll to bottom
+`←`, `H`   ...   Back  
+`↓`, `J`   ...   Move down  
+`↑`, `K`   ...   Move up  
+`→`, `L`   ...   Open  
